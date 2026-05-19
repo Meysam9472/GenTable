@@ -1,8 +1,9 @@
 from ortools.sat.python import cp_model
 
-def time_table_maker(number_of_rooms:int=3, cohorts:list=["2023", "2024", "2025", "2026"], 
-         days:list=["Saturday", "Sunday", "Monday", "Tuesday", "Wednesday"],
-         hours:list=["8:00 AM", "10:00 AM", "14:00 PM", "16:00 PM"], teachers:dict={}, courses:dict={}):
+def time_table_maker( teachers:dict={}, courses:dict={}, number_of_rooms:int=3,
+                     cohorts:list=["2023", "2024", "2025", "2026"], 
+                     days:list=["Saturday", "Sunday", "Monday", "Tuesday", "Wednesday"],
+                     hours:list=["8:00 AM", "10:00 AM", "14:00 PM", "16:00 PM"]):
     
     number_of_rooms = number_of_rooms
     cohorts = cohorts
