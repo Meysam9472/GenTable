@@ -3,7 +3,8 @@ from ortools.sat.python import cp_model
 def time_table_maker( teachers:dict={}, courses:dict={}, number_of_rooms:int=3,
                      cohorts:list=["2023", "2024", "2025", "2026"], 
                      days:list=["Saturday", "Sunday", "Monday", "Tuesday", "Wednesday"],
-                     hours:list=["8:00 AM", "10:00 AM", "14:00 PM", "16:00 PM"]):
+                     hours:list=["8:00 AM", "10:00 AM", "14:00 PM", "16:00 PM"],
+                     print_result:bool=False) -> dict:
     
     number_of_rooms = number_of_rooms
     cohorts = cohorts
@@ -125,6 +126,8 @@ def time_table_maker( teachers:dict={}, courses:dict={}, number_of_rooms:int=3,
     
     solver.parameters.max_time_in_seconds = 60.0
     
+    cohort_schedules = {}
+    
     if status == cp_model.OPTIMAL or status == cp_model.FEASIBLE:
         print("Schedule generated successfully!\n")
         print("="*60)
@@ -151,96 +154,25 @@ def time_table_maker( teachers:dict={}, courses:dict={}, number_of_rooms:int=3,
                                 })
             
             schedule = sorted(schedule, key=lambda k: k["time_idx"])
+            cohort_schedules[f'cohort_{cohort}_schedule'] = schedule
             
             for item in schedule:
                 cohort_has_class = True
-                print(f"Time: {item['time_str']:<20} | Course: {item['course']:<20} |"
-                      f"Teacher: {item['teacher']}")
+                if print_result:
+                    print(f"Time: {item['time_str']:<20} | Course: {item['course']:<20} |"
+                            f"Teacher: {item['teacher']}")
                 
             if not cohort_has_class:
                 print("For this cohort there is no course.")
+                    
             print("-" * 40)
+        
+        return {"status": "success", 'data': cohort_schedules}
+        
     else:
-        print("No feasible schedule could be found. Constraints might be too tight.")
-
-# TODO: Remove these tests
-if __name__ == '__main__':
-    # teachers = {
-    #     "T1": {"name": "استاد کرمانیان", "teacher_available_times": [0, 1, 2, 4, 5, 8, 9, 10]},
-    #     "T2": {"name": "استاد علوی", "teacher_available_times": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]},
-    #     "T3": {"name": "استاد رضایی", "teacher_available_times": [12, 13, 14, 15, 16, 17, 18, 19]}
-    # }
-
-
-    # courses = {
-    #     "C1": {"name": "ساختمان داده", "credits": 3, "cohort": "1403", "teachers": ["T1", "T2"]},
-    #     "C2": {"name": "برنامه‌نویسی پیشرفته", "credits": 4, "cohort": "1404", "teachers": ["T2"]},
-    #     "C3": {"name": "ریاضیات گسسته", "credits": 3, "cohort": "1404", "teachers": ["T1", "T3"]},
-    #     "C4": {"name": "هوش مصنوعی", "credits": 2, "cohort": "1402", "teachers": ["T3"]},
-    #     "C5": {"name": "هوش مصنوعی", "credits": 3, "cohort": "1402", "teachers": ["T1", "T2"]},
-    #     "C6": {"name": "آزمایشگاه فیزیک", "credits": 1, "cohort": "1405", "teachers": ["T3"]}
-    # }
+        if print_result:
+            print("No feasible schedule could be found. Constraints might be too tight.")
+        return {"status": "infeasible", 'data': None}
     
-    
-    teachers = {
-    "T1": {"name": "Prof. A","teacher_available_times":list(range(20))},                                           
-    "T2": {"name": "Prof. B","teacher_available_times":[0, 1, 2, 3, 4, 5, 8, 9, 12, 13, 14, 15, 16, 17, 18, 19]},  
-    "T3": {"name": "Prof. C","teacher_available_times":list(range(20))},
-    "T4": {"name": "Prof. D","teacher_available_times":[2, 3, 4, 5, 6, 7, 10, 11, 14, 15, 16, 17, 18, 19]},                                           
-    "T5": {"name": "Prof. E","teacher_available_times":list(range(20))},
-    "T6": {"name": "Prof. F","teacher_available_times":[0, 1, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 16, 17]}, 
-    "T7": {"name": "Prof. G","teacher_available_times":list(range(20))},
-    }
+    return cohort_schedules
 
-    courses = {
-        # ================= Cohort 2026 =================
-        "C26_1":  {"name": "C26_Course_1", "cohort": "2026", "credits": 3, "teachers": ["T1"]},
-        "C26_2":  {"name": "C26_Course_2", "cohort": "2026", "credits": 3, "teachers": ["T3"]},
-        "C26_3":  {"name": "C26_Course_3", "cohort": "2026", "credits": 1, "teachers": ["T4"]},
-        "C26_4":  {"name": "C26_Course_4", "cohort": "2026", "credits": 2, "teachers": ["T6"]},
-        "C26_5":  {"name": "C26_Course_5", "cohort": "2026", "credits": 3, "teachers": ["T7"]},
-        "C26_6":  {"name": "C26_Course_6", "cohort": "2026", "credits": 1, "teachers": ["T2"]},
-        "C26_7":  {"name": "C26_Course_7", "cohort": "2026", "credits": 2, "teachers": ["T3"]},
-        "C26_8":  {"name": "C26_Course_8", "cohort": "2026", "credits": 3, "teachers": ["T4"]},
-        "C26_9":  {"name": "C26_Course_9", "cohort": "2026", "credits": 1, "teachers": ["T5"]},
-        "C26_10": {"name": "C26_Course_10", "cohort": "2026", "credits": 2, "teachers": ["T7"]},
-
-        # ================= Cohort 2025 =================
-        "C25_1":  {"name": "C25_Course_1", "cohort": "2025", "credits": 3, "teachers": ["T1"]},
-        "C25_2":  {"name": "C25_Course_2", "cohort": "2025", "credits": 3, "teachers": ["T2"]},
-        "C25_3":  {"name": "C25_Course_3", "cohort": "2025", "credits": 2, "teachers": ["T4"]},
-        "C25_4":  {"name": "C25_Course_4", "cohort": "2025", "credits": 1, "teachers": ["T5"]},
-        "C25_5":  {"name": "C25_Course_5", "cohort": "2025", "credits": 3, "teachers": ["T7"]},
-        "C25_6":  {"name": "C25_Course_6", "cohort": "2025", "credits": 2, "teachers": ["T1"]},
-        "C25_7":  {"name": "C25_Course_7", "cohort": "2025", "credits": 1, "teachers": ["T2"]},
-        "C25_8":  {"name": "C25_Course_8", "cohort": "2025", "credits": 3, "teachers": ["T3"]},
-        "C25_9":  {"name": "C25_Course_9", "cohort": "2025", "credits": 2, "teachers": ["T6"]},
-        "C25_10": {"name": "C25_Course_10", "cohort": "2025", "credits": 1, "teachers": ["T7"]},
-
-        # ================= Cohort 2024 =================
-        "C24_1":  {"name": "C24_Course_1", "cohort": "2024", "credits": 3, "teachers": ["T3"]},
-        "C24_2":  {"name": "C24_Course_2", "cohort": "2024", "credits": 3, "teachers": ["T4"]},
-        "C24_3":  {"name": "C24_Course_3", "cohort": "2024", "credits": 2, "teachers": ["T5"]},
-        "C24_4":  {"name": "C24_Course_4", "cohort": "2024", "credits": 1, "teachers": ["T6"]},
-        "C24_5":  {"name": "C24_Course_5", "cohort": "2024", "credits": 3, "teachers": ["T2"]},
-        "C24_6":  {"name": "C24_Course_6", "cohort": "2024", "credits": 2, "teachers": ["T3"]},
-        "C24_7":  {"name": "C24_Course_7", "cohort": "2024", "credits": 1, "teachers": ["T1"]},
-        "C24_8":  {"name": "C24_Course_8", "cohort": "2024", "credits": 3, "teachers": ["T4"]},
-        "C24_9":  {"name": "C24_Course_9", "cohort": "2024", "credits": 2, "teachers": ["T5"]},
-        "C24_10": {"name": "C24_Course_10", "cohort": "2024", "credits": 1, "teachers": ["T2"]},
-
-        # ================= Cohort 2023 =================
-        "C23_1":  {"name": "C23_Course_1", "cohort": "2023", "credits": 3, "teachers": ["T6"]},
-        "C23_2":  {"name": "C23_Course_2", "cohort": "2023", "credits": 3, "teachers": ["T7"]},
-        "C23_3":  {"name": "C23_Course_3", "cohort": "2023", "credits": 2, "teachers": ["T1"]},
-        "C23_4":  {"name": "C23_Course_4", "cohort": "2023", "credits": 1, "teachers": ["T2"]},
-        "C23_5":  {"name": "C23_Course_5", "cohort": "2023", "credits": 3, "teachers": ["T4"]},
-        "C23_6":  {"name": "C23_Course_6", "cohort": "2023", "credits": 2, "teachers": ["T5"]},
-        "C23_7":  {"name": "C23_Course_7", "cohort": "2023", "credits": 1, "teachers": ["T6"]},
-        "C23_8":  {"name": "C23_Course_8", "cohort": "2023", "credits": 3, "teachers": ["T7"]},
-        "C23_9":  {"name": "C23_Course_9", "cohort": "2023", "credits": 2, "teachers": ["T3"]},
-        "C23_10": {"name": "C23_Course_10", "cohort": "2023", "credits": 1, "teachers": ["T4"]}
-    }
-    
-    
-    time_table_maker(teachers=teachers, courses=courses)
