@@ -7,7 +7,7 @@ celery_app = Celery(
     backend="redis://localhost:6379/0"
 )
 
-celery_app.autodiscover_tasks(['app.tasks_folder'])
+celery_app.autodiscover_tasks(['apps.time_table_maker'])
 
 celery_app.conf.update(
     task_serializer='json',
