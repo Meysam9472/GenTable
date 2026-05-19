@@ -23,12 +23,12 @@ def time_table_maker(number_of_rooms:int=3, cohorts:list=["2023", "2024", "2025"
     model = cp_model.CpModel()
     
     # X is a dict for saving decision variables,
-    # if X[(c_id, s, t, tr)] == 1 means the session==s(1 or 2(in fact 0 or 1)) of course==c_id at time==t will be holded
-    # by teacher==tr.
+    # if X[(c_id, s, t, tr)] == 1 means the session==s(1 or 2(in fact 0 or 1)) of course==c_id at
+    # time==t will be holded by teacher==tr.
     X = {}
     
-    # Calculating number of sessions for each course. For 3 or 4 units courses there are 2 class times in a 
-    # week and for 1 or 2 units there is 1 class time in a week.
+    # Calculating number of sessions for each course. For 3 or 4 credits courses there are 2 classes
+    # times in a week and for 1 or 2 credits there is 1 class time in a week.
     courses_number_of_sessions_dict = {}
     for c_id, c_data in courses.items():
         courses_number_of_sessions_dict[c_id] = 2 if c_data["credits"] >= 3 else 1
@@ -38,7 +38,8 @@ def time_table_maker(number_of_rooms:int=3, cohorts:list=["2023", "2024", "2025"
         for s in range(courses_number_of_sessions_dict[c_id]):
             for tr_id in c_data["teachers"]:
                 for tr_av_times in teachers[tr_id]["teacher_available_times"]:
-                    X[(c_id, s, tr_av_times, tr_id)] = model.NewBoolVar(f'X_c{c_id}_s{s}_tr_av_times{tr_av_times}_tr{tr_id}')
+                    var_name = f'X_c{c_id}_s{s}_tr_av_times{tr_av_times}_tr{tr_id}'
+                    X[(c_id, s, tr_av_times, tr_id)] = model.NewBoolVar(var_name)
     
     # Constraint 1: Each session of each course should be held by one teacher at one time.
     for c_id, c_data in courses.items():
@@ -48,8 +49,8 @@ def time_table_maker(number_of_rooms:int=3, cohorts:list=["2023", "2024", "2025"
                 for tr_avail_time in teachers[tr_id]["teacher_available_times"]:
                     valid_vars.append(X[(c_id, s, tr_avail_time, tr_id)])
             if len(valid_vars) == 0:
-                print(f"Timetable is not able to be created because for {c_data['name']} course we don't have\
-                      any teacher.")
+                print(f"Timetable is not able to be created because for {c_data['name']}\
+                        course we don't have any teacher.")
                 return
             
             model.AddExactlyOne(valid_vars) # Only one value should be 1 and other values should be 0s.
@@ -120,7 +121,9 @@ def time_table_maker(number_of_rooms:int=3, cohorts:list=["2023", "2024", "2025"
     # 4.SOLVE AND PRINT RESULTS
     solver = cp_model.CpSolver()
     status = solver.Solve(model)
-
+    
+    solver.parameters.max_time_in_seconds = 60.0
+    
     if status == cp_model.OPTIMAL or status == cp_model.FEASIBLE:
         print("Schedule generated successfully!\n")
         print("="*60)
@@ -150,7 +153,8 @@ def time_table_maker(number_of_rooms:int=3, cohorts:list=["2023", "2024", "2025"
             
             for item in schedule:
                 cohort_has_class = True
-                print(f"Time: {item['time_str']:<20} | Course: {item['course']:<20} | Teacher: {item['teacher']}")
+                print(f"Time: {item['time_str']:<20} | Course: {item['course']:<20} |"
+                      f"Teacher: {item['teacher']}")
                 
             if not cohort_has_class:
                 print("For this cohort there is no course.")
@@ -158,7 +162,7 @@ def time_table_maker(number_of_rooms:int=3, cohorts:list=["2023", "2024", "2025"
     else:
         print("No feasible schedule could be found. Constraints might be too tight.")
 
-
+# TODO: Remove these tests
 if __name__ == '__main__':
     # teachers = {
     #     "T1": {"name": "استاد کرمانیان", "teacher_available_times": [0, 1, 2, 4, 5, 8, 9, 10]},
