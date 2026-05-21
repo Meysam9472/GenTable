@@ -1,20 +1,12 @@
 from fastapi import APIRouter
-from pydantic import BaseModel
 from .tasks import time_table_maker_task
 from celery.result import AsyncResult
 from celery_worker import celery_app
 
+from schemas.time_table_schema import ScheduleRequest
+
 
 router = APIRouter()
-
-
-class ScheduleRequest(BaseModel):
-    teachers: dict
-    courses: dict
-    num_rooms: int
-    cohorts: list
-    days: list
-    hours: list
 
 
 @router.post("/schedule/start")
