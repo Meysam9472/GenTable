@@ -71,36 +71,39 @@ curl -X 'POST' \
   "days": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
   "hours": ["8:00 AM", "10:00 AM", "14:00 PM", "16:00 PM"]
 }'
+```
 
 **Expected Response:**
-You will receive a `task_id` which is required for the next step.
 
+You will receive a `task_id` which is required for the next step.
+```bash
 json
 {
   "task_id": "b9e6c4f0-7b5a-4b9e-9b0a-1c2d3e4f5a6b",
   "message": "Background processing started."
 }
+```
 
----
 
 ## 2. Check Task Status
 
 Use the `task_id` received from the previous request to check the status of your task. Replace `YOUR_TASK_ID` with the actual ID.
 
-bash
+```bash
 curl -X 'GET' \
   'http://localhost:8000/schedule/status/YOUR_TASK_ID' \
   -H 'accept: application/json'
-
+```
 **Example:**
 
-bash
+```bash
 curl -X 'GET' \
   'http://localhost:8000/schedule/status/b9e6c4f0-7b5a-4b9e-9b0a-1c2d3e4f5a6b' \
   -H 'accept: application/json'
+```
 
 **Expected Response (if completed successfully):**
-
+```bash
 json
 {
   "status": "SUCCESS",
@@ -109,11 +112,14 @@ json
 "data": { ... scheduled data ... }
   }
 }
+```
 
 **Expected Response (if still processing):**
 
+```bash
 json
 {
   "status": "PENDING",
   "result": null
 }
+```
