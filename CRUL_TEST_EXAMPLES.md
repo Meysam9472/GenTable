@@ -2,7 +2,7 @@
 
 This document contains `curl` commands to test the FastAPI scheduling endpoints. Ensure your FastAPI server, Redis, and Celery workers are running before executing these tests.
 
-## 1. Start the Scheduling Task
+### 1. Start the Scheduling Task
 
 Send a `POST` request to start the background scheduling task with sample data.
 ```bash
@@ -85,7 +85,7 @@ json
 ```
 
 
-## 2. Check Task Status
+### 2. Check Task Status
 
 Use the `task_id` received from the previous request to check the status of your task. Replace `YOUR_TASK_ID` with the actual ID.
 
@@ -122,4 +122,50 @@ json
   "status": "PENDING",
   "result": null
 }
+```
+
+
+## User Management API Tests
+
+These `curl` commands are used to test the user management endpoints. 
+Assuming the FastAPI server is running locally on `http://127.0.0.1:8000`.
+
+### 1. Create a New User
+Create a user with a specific role (e.g., ADMIN).
+```bash
+curl -X 'POST' \
+  'http://127.0.0.1:8000/users/' \
+  -H 'accept: application/json' \
+  -H 'Content-Type: application/json' \
+  -d '{
+  "username": "admin_user",
+  "password": "mysecretpassword",
+  "role": "ADMIN"
+}'
+```
+
+### 2. Get All Users
+Retrieve a list of all registered users (passwords will not be included in the response).
+
+```bash
+curl -X 'GET' \
+  'http://127.0.0.1:8000/users/' \
+  -H 'accept: application/json'
+```
+### 3. Get a Specific User by ID
+Retrieve details of a single user (replace `1` with the actual user ID).
+
+```bash
+curl -X 'GET' \
+  'http://127.0.0.1:8000/users/1' \
+  -H 'accept: application/json'
+```
+
+### 4. Delete a User
+Delete a specific user by their ID (replace `1` with the actual user ID).
+
+```bash
+curl -X 'DELETE' \
+  'http://127.0.0.1:8000/users/1' \
+  -H 'accept: */*'
 ```
