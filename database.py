@@ -2,14 +2,23 @@ from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, Asyn
 from sqlalchemy.orm import declarative_base
 from dotenv import load_dotenv
 import os
+from urllib.parse import quote_plus
+
 
 
 load_dotenv()
 
 
-DATABASE_URL = f"postgresql+asyncpg://{os.getenv("POSTGRES_USER_NAME")}:{os.getenv("POSTGRES_PASSWORD")}@\
-                {os.getenv("POSTGRES_HOST")}:{os.getenv("POSTGRES_PORT")}/{os.getenv("POSTGRES_DB_NAME")}"
+# Get environment variables
+user = os.getenv("POSTGRES_USER_NAME")
+# Use quote_plus to handle special characters like #, %, $, ^ in password
+password = quote_plus(os.getenv("POSTGRES_PASSWORD", ""))
+host = os.getenv("POSTGRES_HOST")
+port = os.getenv("POSTGRES_PORT")
+db_name = os.getenv("POSTGRES_DB_NAME")
 
+# Construct the URL
+DATABASE_URL = f"postgresql+asyncpg://{user}:{password}@{host}:{port}/{db_name}"
 # Create async engine
 engine = create_async_engine(DATABASE_URL, echo=True)
 
