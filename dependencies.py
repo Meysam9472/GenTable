@@ -10,6 +10,8 @@ from jose import JWTError, jwt
 from sqlalchemy.ext.asyncio import AsyncSession
 from models.users_models import UserRole
 from apps.users.security import SECRET_KEY, ALGORITHM
+from models.users_models import User
+
 
 # This tells FastAPI where the client should send credentials to get a token
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
@@ -31,7 +33,8 @@ async def get_postgres_db_connection():
         yield session
 
 
-async def get_current_user_token_data(token: str = Depends(oauth2_scheme)) -> dict:
+async def get_current_user_token_data(token: str = Depends(oauth2_scheme), 
+                                      db: AsyncSession = Depends(get_postgres_db_connection)) -> dict:
     """Validates the JWT token and returns the payload data."""
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -39,7 +42,7 @@ async def get_current_user_token_data(token: str = Depends(oauth2_scheme)) -> di
         headers={"WWW-Authenticate": "Bearer"},
     )
     try:
-        # Decode the token
+        # 1. Decode the token
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         user_id: str = payload.get("sub")
         role: str = payload.get("role")
@@ -47,7 +50,23 @@ async def get_current_user_token_data(token: str = Depends(oauth2_scheme)) -> di
         if user_id is None or role is None:
             raise credentials_exception
             
+    
+        # 2. Check the database to see if the user still exists
+        # This prevents deleted users from using their unexpired tokens
+        user = await db.get(User, int(user_id))
+        if user is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="User no longer exists.",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+            
+        # Optional: You can also check if the user is active/banned here
+        # if not user.is_active:
+        #     raise HTTPException(status_code=400, detail="Inactive user")
+        
         return {"user_id": int(user_id), "role": role}
+        
         
     except JWTError:
         raise credentials_exception

@@ -17,12 +17,10 @@ from dependencies import require_admin_role
 from fastapi.security import OAuth2PasswordRequestForm
 
 
-
-
 router = APIRouter(prefix="/users", tags=["Users"])
 
 
-@router.post('/', response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+@router.post('/sing-up', response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 async def create_user(user_in: UserCreate, db: AsyncSession = Depends(get_db)):
     """
     Create a new user.
@@ -127,7 +125,6 @@ async def login(
         "refresh_token": refresh_token,
         "token_type": "bearer"
     }
-
 
 
 @router.post("/refresh", status_code=status.HTTP_200_OK)
