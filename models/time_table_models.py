@@ -16,6 +16,7 @@ class Teacher(Base):
 
     user = relationship("User", back_populates="teachers")
 
+
 class Course(Base):
     __tablename__ = "courses"
 
