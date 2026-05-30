@@ -29,24 +29,34 @@ It features a dual-database architecture: PostgreSQL for relational data (Users,
 
 ## 📁 Project Structure
 
+## 📁 Project Structure
 ```text
-├── alembic/                # Database migration scripts
-├── core/
-│   ├── security.py         # JWT and password hashing (Argon2)
-│   ├── dependencies.py     # FastAPI dependencies (Auth, DB session)
-├── database/
-│   ├── database_pg.py      # PostgreSQL async engine and session
-│   ├── database_mongo.py   # MongoDB connection manager
-├── models/                 # SQLAlchemy models (User, Teacher, Course)
-├── routers/                # FastAPI endpoint routers (users, auth, schedule)
-├── schemas/                # Pydantic models for validation
-├── services/
-│   ├── scheduler.py        # OR-Tools timetable logic
-├── celery_worker.py        # Celery app configuration
-├── tasks.py                # Celery background tasks
-├── main.py                 # FastAPI application entry point
-├── alembic.ini             # Alembic configuration
-└── requirements.txt        # Python dependencies
+├── alembic/                  # Database migration scripts
+├── apps/                     # Application modules (routers, services, tasks)
+│   ├── time_table_maker/     # Scheduling domain
+│   │   ├── services/         # Core OR-Tools and business logic
+│   │   ├── tasks.py          # Celery background tasks
+│   │   └── time_table.py     # FastAPI router for scheduling
+│   └── users/                # User management domain
+│       ├── security.py       # JWT and password hashing (Argon2)
+│       └── users.py          # FastAPI router for users/auth
+├── docs/                     # Documentation files
+├── models/                   # SQLAlchemy models
+│   ├── time_table_models.py  # Course and Teacher models
+│   └── users_models.py       # User models
+├── schemas/                  # Pydantic models for validation
+│   ├── time_table_schema.py  
+│   └── users_schema.py       
+├── celery_worker.py          # Celery app configuration
+├── config.py                 # Application configuration/settings
+├── database.py               # Database connections (PostgreSQL & MongoDB)
+├── dependencies.py           # FastAPI dependencies (Auth, DB session)
+├── main.py                   # FastAPI application entry point
+├── pyproject.toml            # Poetry dependencies and metadata
+├── poetry.lock               # Poetry lock file
+├── alembic.ini               # Alembic configuration
+├── CRUL_TEST_EXAMPLES.md     # API curl testing examples
+└── README.md                 # Project documentation
 ```
 
 ## ⚙️ Prerequisites
