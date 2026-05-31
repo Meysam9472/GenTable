@@ -1,7 +1,12 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends, HTTPException
 from .tasks import time_table_maker_task
 from celery.result import AsyncResult
 from celery_worker import celery_app
+
+from sqlalchemy.ext.asyncio import AsyncSession
+from models.users_models import User
+from dependencies import get_postgres_db_connection as get_db
+from sqlalchemy.future import select
 
 from dependencies import get_current_user_token_data, require_admin_role
 
@@ -12,11 +17,15 @@ router = APIRouter(prefix="/schedule", tags=["Schedule"])
 
 
 @router.post("/start")
-def start_scheduling(req: ScheduleRequest, current_user: int=Depends(get_current_user_token_data)):
+async def start_scheduling(req: ScheduleRequest, current_user: int=Depends(get_current_user_token_data),
+                           db: AsyncSession = Depends(get_db)):
     
     current_user_id = current_user.get("user_id")
     
-    # TODO: Check Credit of user here
+    result = await db.execute(select(User.credit).where(User.id==current_user_id))
+    user_credit = result.scalars().first()
+    if user_credit is None or user_credit <= 0:
+        raise HTTPException(status_code=400, detail="User's credit is not enough...")
     
     task = time_table_maker_task.delay(req.teachers, req.courses, req.num_rooms,
                                        req.cohorts, req.days, req.hours, current_user_id)

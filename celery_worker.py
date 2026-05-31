@@ -26,5 +26,5 @@ celery_app.conf.update(
     task_time_limit=200, 
     task_ack_late=True,
     worker_concurrency=2, # Each worker can run x tasks together.
-    worker_prefetch_multiplier=1 # Length of worker's queue.
+    worker_prefetch_multiplier=2 # Length of worker's queue.
 )

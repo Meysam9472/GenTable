@@ -3,14 +3,20 @@ from dependencies import get_mongo_connection
 from datetime import datetime
 import sys
 import os
+from database import SyncSessionLocal
+from models.users_models import User
+from sqlalchemy import update
 
 
 def time_table_maker(teachers:dict={}, courses:dict={}, number_of_rooms:int=3,
                      cohorts:list=["2023", "2024", "2025", "2026"], 
                      days:list=["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
                      hours:list=["8:00 AM", "10:00 AM", "14:00 PM", "16:00 PM"],
-                     print_result:bool=False, task_id:str='', user_id=None) -> dict:
+                     print_result:bool=False, task_id:str='', user_id=None, logger=None) -> dict:
     try:
+        logger.info("Task started...")
+        _credit_reduction(user_id)
+        
         number_of_rooms = number_of_rooms
         cohorts = cohorts
         
@@ -172,14 +178,14 @@ def time_table_maker(teachers:dict={}, courses:dict={}, number_of_rooms:int=3,
                         
                 print("-" * 40)
             
-            _save_results(cohort_schedules, task_id, 'Success', user_id)
+            _save_results(cohort_schedules, task_id, 'Success', user_id, logger)
             return {"status": "success", 'data': cohort_schedules}
             
         else:
             if print_result:
                 print("No feasible schedule could be found. Constraints might be too tight.")
             
-            _save_results(None, task_id, 'Infeasible', user_id)
+            _save_results(None, task_id, 'Infeasible', user_id, logger)
             
             return {"status": "infeasible", 'data': None}
     
@@ -190,13 +196,17 @@ def time_table_maker(teachers:dict={}, courses:dict={}, number_of_rooms:int=3,
         error_result = {"Error Type": str(exc_type.__name__), "File Name": str(fname),
                         "Line Number": int(line_no), "Message": str(exc_obj)}
         
-        _save_results(error_result, task_id, 'Error', user_id)
+        _save_results(error_result, task_id, 'Error', user_id, logger)
 
 
-def _save_results(cohort_schedules, task_id, status, user_id):
+def _save_results(cohort_schedules, task_id, status, user_id, logger):
     
     DB_NAME = "university_scheduler"
     COLLECTION_NAME = "schedules"      
+    
+    # Increase user's credit after unsuccessfull making a time table.
+    if status != "Success":
+        _credit_add(user_id)
     
     with get_mongo_connection() as client:
         # If database and collection do not exist, they will be created on first insert.
@@ -214,4 +224,26 @@ def _save_results(cohort_schedules, task_id, status, user_id):
         # Insert the result into the collection
         collection.insert_one(document)
         print('* Document saved.')
-        
+
+
+def _credit_reduction(user_id):
+    with SyncSessionLocal() as session:
+        # Use an atomic update at the database level
+        stmt = (
+            update(User)
+            .where(User.id == user_id)
+            .values(credit=User.credit - 1)
+        )
+        session.execute(stmt)
+        session.commit()
+
+
+def _credit_add(user_id):
+    with SyncSessionLocal() as session:
+        stmt = (
+            update(User)
+            .where(User.id == user_id)
+            .values(credit=User.credit + 1)
+        )
+        session.execute(stmt)
+        session.commit()
