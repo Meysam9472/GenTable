@@ -13,7 +13,7 @@ SECRET_KEY = os.getenv("JWT_SECRET_KEY")
 REFRESH_SECRET_KEY = os.getenv("JWT_REFRESH_SECRET_KEY")
 ALGORITHM = "HS256"
 # Short lifespan for access token
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
+ACCESS_TOKEN_EXPIRE_MINUTES = 90
 # Long lifespan for refresh token (e.g., 7 days)
 REFRESH_TOKEN_EXPIRE_DAYS = 7
 
