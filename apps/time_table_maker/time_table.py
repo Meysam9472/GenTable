@@ -219,9 +219,9 @@ async def update_course(
         # 3. Update fields if they are provided (not None)
         if course_data.name is not None:
             course.name = course_data.name
-        if course_data.last_name is not None:
+        if course_data.credits is not None:
             course.credits = course_data.credits
-        if course_data.available_times is not None:
+        if course_data.cohort is not None:
             course.cohort = course_data.cohort
         
         await db.commit()
@@ -236,7 +236,7 @@ async def update_course(
         await db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="An unexpected error occurred while updating the course"
+            detail=f"An unexpected error occurred while updating the course.{e}"
         )
 
 
