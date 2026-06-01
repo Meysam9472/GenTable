@@ -14,6 +14,7 @@ from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from dependencies import get_current_user_token_data, require_admin_role
 
 from schemas.time_table_schema import ScheduleRequest, TeacherRequest, CourseRequest
+from schemas.time_table_schema import CourseUpdateSchema, TeacherUpdateSchema
 
 
 router = APIRouter(prefix="/schedule", tags=["Schedule"])
