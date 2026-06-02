@@ -28,8 +28,6 @@ It features a dual-database architecture: PostgreSQL for relational data (Users,
 *   **Solver**: Google OR-Tools
 
 ## 📁 Project Structure
-
-## 📁 Project Structure
 ```text
 ├── alembic/                  # Database migration scripts
 ├── apps/                     # Application modules (routers, services, tasks)
