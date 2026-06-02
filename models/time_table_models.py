@@ -16,7 +16,7 @@ class Teacher(Base):
 
     # relationship is a pythonic solution for moving between objects of connected tables
     user = relationship("User", back_populates="teachers")
-    user_teacher_course_relations = relationship("UserTeacherCourseRelation", back_populates="teachers")
+    user_teacher_course_relation = relationship("UserTeacherCourseRelation", back_populates="teacher")
 
 
 class Course(Base):
@@ -29,7 +29,7 @@ class Course(Base):
     credits = Column(Integer, nullable=False)
 
     user = relationship("User", back_populates="courses")
-    user_teacher_course_relations = relationship("UserTeacherCourseRelation", back_populates="courses")
+    user_teacher_course_relation = relationship("UserTeacherCourseRelation", back_populates="course")
 
 
 class UserTeacherCourseRelation(Base):
@@ -40,6 +40,6 @@ class UserTeacherCourseRelation(Base):
     teacher_id = Column(Integer, ForeignKey("teachers.id"), nullable=False)
     course_id = Column(Integer, ForeignKey("courses.id"), nullable=False)
     
-    user = relationship("User", back_populates="user_teacher_course_relations")
-    teacher = relationship("Teacher", back_populates="user_teacher_course_relations")
-    course = relationship("Course", back_populates="user_teacher_course_relations")
+    user = relationship("User", back_populates="user_teacher_course_relation")
+    teacher = relationship("Teacher", back_populates="user_teacher_course_relation")
+    course = relationship("Course", back_populates="user_teacher_course_relation")
