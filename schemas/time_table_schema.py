@@ -33,3 +33,8 @@ class CourseUpdateSchema(BaseModel):
     name: Optional[str] = None
     credits: Optional[int] = None
     cohort: Optional[str] = None
+
+
+class RelationSchema(BaseModel):
+    teacher_id: int = None
+    course_id: int = None

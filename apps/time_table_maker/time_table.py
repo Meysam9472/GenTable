@@ -5,7 +5,7 @@ from celery_worker import celery_app
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from models.users_models import User
-from models.time_table_models import Teacher, Course
+from models.time_table_models import Teacher, Course, UserTeacherCourseRelation
 from dependencies import get_postgres_db_connection as get_db
 from sqlalchemy.future import select
 from sqlalchemy import delete, and_
@@ -14,7 +14,7 @@ from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from dependencies import get_current_user_token_data, require_admin_role
 
 from schemas.time_table_schema import ScheduleRequest, TeacherRequest, CourseRequest
-from schemas.time_table_schema import CourseUpdateSchema, TeacherUpdateSchema
+from schemas.time_table_schema import CourseUpdateSchema, TeacherUpdateSchema, RelationSchema
 
 
 router = APIRouter(prefix="/schedule", tags=["Schedule"])
@@ -101,9 +101,9 @@ async def get_teachers(current_user: dict=Depends(get_current_user_token_data),
         )
 
 
-@router.delete("/delete_teachers/{id}")
-async def delete_teachers(id: int, current_user: dict=Depends(get_current_user_token_data),
-                          db: AsyncSession = Depends(get_db)):
+@router.delete("/delete_teacher/{id}")
+async def delete_teacher(id: int, current_user: dict=Depends(get_current_user_token_data),
+                         db: AsyncSession = Depends(get_db)):
     # 1. Extract user_id from token data
     user_id = current_user.get("user_id")
     try:
@@ -240,10 +240,9 @@ async def update_course(
         )
 
 
-
-@router.delete("/delete_courses/{id}")
-async def delete_courses(id: int, current_user: dict=Depends(get_current_user_token_data),
-                         db: AsyncSession = Depends(get_db)):
+@router.delete("/delete_course/{id}")
+async def delete_course(id: int, current_user: dict=Depends(get_current_user_token_data),
+                        db: AsyncSession = Depends(get_db)):
     user_id = current_user.get("user_id")
     try:
         query = (delete(Course).where(and_(Course.id == id, Course.user_id == user_id)))
@@ -313,8 +312,77 @@ async def add_course(req: CourseRequest, current_user: dict=Depends(get_current_
         await db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"An unexpected error occurred while adding the course.\n{e}"
+            detail=f"An unexpected error occurred while adding the course."
         )
-    
 
+
+@router.get("/get_relations")
+async def get_relations(current_user: dict=Depends(get_current_user_token_data),
+                        db: AsyncSession = Depends(get_db)):
+    try:
+        user_id = current_user.get("user_id")
+        query = select(UserTeacherCourseRelation).where(UserTeacherCourseRelation.user_id==user_id)
+        result = await db.execute(query)
+        relations = result.scalars().all()
+        
+        return {"relations": relations}
+    
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"An unexpected error occurred while fetching relations."
+        )
+
+
+@router.post("/add_relation")
+async def add_relation(req: RelationSchema, current_user: dict=Depends(get_current_user_token_data),
+                       db: AsyncSession = Depends(get_db)):
+    try:
+        user_id = current_user.get("user_id")
+        teacher_id = req.teacher_id
+        course_id = req.course_id
+        new_relation = UserTeacherCourseRelation(user_id=user_id, teacher_id=teacher_id, 
+                                                 course_id=course_id)
+        db.add(new_relation)
+        await db.commit()
+        await db.refresh(new_relation)
+        
+        return {"result": f"Relation: {new_relation.id} added successfully."}
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"An unexpected error occurred while adding the relation."
+        )
+
+
+@router.delete("/delete_relation/{id}")
+async def delete_relation(id: int, current_user: dict=Depends(get_current_user_token_data),
+                          db: AsyncSession = Depends(get_db)):
+    
+    user_id = current_user.get("user_id")
+    try:
+        query = (delete(UserTeacherCourseRelation).where(and_(UserTeacherCourseRelation.id == id,
+                                                              UserTeacherCourseRelation.user_id == user_id)))
+        
+        result = await db.execute(query)
+        
+        if result.rowcount == 0:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Relation with id {id} not found or you don't have permission to delete it"
+                )
+            
+        await db.commit()
+        
+        return {"message": f"Relation(id={id}) successfully deleted"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An error occurred while deleting the relation"
+        )
 

@@ -221,7 +221,7 @@ curl -X GET "http://localhost:8000/schedule/get_teachers" \
 ### 3. Delete a teacher by ID (e.g., id=1 passed as a path parameter)
 The `teacher id` should belongs to the user who requests to this api endpoint.
 ```bash
-curl -X DELETE "http://localhost:8000/schedule/delete_teachers/1" \
+curl -X DELETE "http://localhost:8000/schedule/delete_teacher/1" \
      -H "Authorization: Bearer <YOUR_ACCESS_TOKEN>"
 ```
 
@@ -249,7 +249,7 @@ curl -X GET "http://localhost:8000/schedule/get_courses" \
 The `course id` should belongs to the user who requests to this api endpoint.
 
 ```bash
-curl -X DELETE "http://localhost:8000/schedule/delete_courses/2" \
+curl -X DELETE "http://localhost:8000/schedule/delete_course/2" \
      -H "Authorization: Bearer <YOUR_ACCESS_TOKEN>"
 ```
 
@@ -276,4 +276,30 @@ curl -X PATCH "http://127.0.0.1:8000/schedule/update_course/2" \
             "credits": 4,
             # "cohort": "2027"
          }'
+```
+
+### 9. Add a new relation
+Create a new relation for the current user.
+```bash
+curl -X POST "http://localhost:8000/schedule/add_relation" \
+     -H "Authorization: Bearer <YOUR_ACCESS_TOKEN>" \
+     -H "Content-Type: application/json" \
+     -d '{
+           "teacher_id": 2,
+           "course_id": 1
+         }'
+```
+
+### 10. Retrieve all relations
+Get all relations for the current user.
+```bash
+curl -X GET "http://localhost:8000/schedule/get_relations" \
+     -H "Authorization: Bearer <YOUR_ACCESS_TOKEN>"
+```
+
+### 11. Delete a relation by ID (e.g., id=1 passed as a path parameter)
+The `relation id` should belongs to the user who requests to this api endpoint.
+```bash
+curl -X DELETE "http://localhost:8000/schedule/delete_relation/1" \
+     -H "Authorization: Bearer <YOUR_ACCESS_TOKEN>"
 ```
