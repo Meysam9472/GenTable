@@ -12,6 +12,7 @@ from sqlalchemy import delete, and_
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 from dependencies import get_current_user_token_data, require_admin_role
+from dependencies import get_mongo_connection
 
 from schemas.time_table_schema import ScheduleRequest, TeacherRequest, CourseRequest
 from schemas.time_table_schema import CourseUpdateSchema, TeacherUpdateSchema, RelationSchema
@@ -386,3 +387,80 @@ async def delete_relation(id: int, current_user: dict=Depends(get_current_user_t
             detail="An error occurred while deleting the relation"
         )
 
+
+@router.get("/get_all_user_schedules_list/{user_id}")
+async def get_all_user_schedules_list(user_id: int, current_user: dict=Depends(get_current_user_token_data)):
+    try:
+        DB_NAME = "university_scheduler"
+        COLLECTION_NAME = "schedules" 
+        
+        with get_mongo_connection() as client:
+            db = client[DB_NAME]
+            collection = db[COLLECTION_NAME] 
+            # Convert cursor to list and exclude '_id' to avoid JSON serialization errors
+            user_schedules = list(collection.find(
+                {"user_id": user_id}, 
+                {"_id": 0, "schedule_name": 1, "task_id": 1, "created_at": 1, "status": 1}
+            ))
+        
+        return {"user_schedules": user_schedules}
+            
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An unexpected error occurred while fetching user schedule list."
+        )
+
+
+@router.get("/get_user_schedule/{task_id}")
+async def get_user_schedule(task_id: str, current_user: dict=Depends(get_current_user_token_data)):
+    try:
+        DB_NAME = "university_scheduler"
+        COLLECTION_NAME = "schedules" 
+        
+        with get_mongo_connection() as client:
+            db = client[DB_NAME]
+            collection = db[COLLECTION_NAME] 
+            user_schedule = collection.find_one(
+                {"task_id": task_id}, 
+                {"_id": 0, "schedule_name": 1, "created_at": 1, "result": 1, "status": 1}
+            )
+            
+        if not user_schedule:
+            raise HTTPException(status_code=404, detail="Schedule not found.")
+        
+        return {"user_schedule": user_schedule}
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An unexpected error occurred while fetching the user schedule."
+        )
+
+
+@router.delete("/delete_user_schedule/{task_id}")
+async def delete_user_schedule(task_id: str, current_user: dict=Depends(get_current_user_token_data)):
+    try:
+        DB_NAME = "university_scheduler"
+        COLLECTION_NAME = "schedules" 
+        
+        with get_mongo_connection() as client:
+            db = client[DB_NAME]
+            collection = db[COLLECTION_NAME]
+            # Delete and get result
+            delete_result = collection.delete_one({"task_id": task_id})
+        
+        if delete_result.deleted_count == 0:
+            raise HTTPException(status_code=404, detail="Schedule not found to delete.")
+        
+        return {"result": f"Schedule deleted successfully (task_id: {task_id})."}
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"An unexpected error occurred while deleting the user schedule.{e}"
+        )

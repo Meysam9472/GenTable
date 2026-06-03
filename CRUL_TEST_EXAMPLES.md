@@ -304,3 +304,30 @@ The `relation id` should belongs to the user who requests to this api endpoint.
 curl -X DELETE "http://localhost:8000/schedule/delete_relation/1" \
      -H "Authorization: Bearer <YOUR_ACCESS_TOKEN>"
 ```
+
+
+### 12. Get Schedules List
+get all user's schedules as a list by `user_id`.
+```bash
+curl -X GET "http://localhost:8000/schedule/get_all_user_schedules_list/1" \
+     -H "accept: application/json" \
+     -H "Authorization: Bearer <YOUR_ACCESS_TOKEN>"
+```
+
+### 13. Get User Schedule
+Fetch a user schedule by `task_id`.
+```bash
+curl -X GET "http://localhost:8000/schedule/get_user_schedule/123" \
+     -H "accept: application/json" \
+     -H "Authorization: Bearer <YOUR_ACCESS_TOKEN>"
+```
+
+### 14. Delete User Schedule
+Delete a user schedule by `task_id`.
+```bash
+curl -X DELETE "http://localhost:8000/schedule/delete_user_schedule/123" \
+     -H "accept: application/json" \
+     -H "Authorization: Bearer <YOUR_ACCESS_TOKEN>"
+
+```
+
