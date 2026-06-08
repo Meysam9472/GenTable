@@ -23,7 +23,7 @@ from schemas.time_table_schema import CourseUpdateSchema, TeacherUpdateSchema, R
 router = APIRouter(prefix="/schedule", tags=["Schedule"])
 
 
-@router.post("/start")
+@router.post("/start", status_code=status.HTTP_200_OK)
 @limiter.limit("1/minute")
 async def start_scheduling(request: Request, req: ScheduleRequest,
                            current_user: dict=Depends(get_current_user_token_data),
@@ -41,7 +41,7 @@ async def start_scheduling(request: Request, req: ScheduleRequest,
     return {"task_id": task.id, "message": "Task started in background."}
 
 
-@router.get("/status/{task_id}")
+@router.get("/status/{task_id}", status_code=status.HTTP_200_OK)
 def get_schedule_status(task_id: str, current_admin: dict = Depends(require_admin_role)):
     task_result = AsyncResult(task_id, app=celery_app)
     
@@ -57,7 +57,7 @@ def get_schedule_status(task_id: str, current_admin: dict = Depends(require_admi
         return {"status": task_result.state}
 
 
-@router.post("/add_teacher")
+@router.post("/add_teacher", status_code=status.HTTP_200_OK)
 async def add_teacher(req: TeacherRequest, current_user: dict=Depends(get_current_user_token_data),
                       db: AsyncSession = Depends(get_db)):
     try:
@@ -89,7 +89,7 @@ async def add_teacher(req: TeacherRequest, current_user: dict=Depends(get_curren
         )
     
 
-@router.get("/get_teachers")
+@router.get("/get_teachers", status_code=status.HTTP_200_OK)
 async def get_teachers(current_user: dict=Depends(get_current_user_token_data),
                        db: AsyncSession = Depends(get_db)):
     try:
@@ -106,7 +106,7 @@ async def get_teachers(current_user: dict=Depends(get_current_user_token_data),
         )
 
 
-@router.delete("/delete_teacher/{id}")
+@router.delete("/delete_teacher/{id}", status_code=status.HTTP_200_OK)
 async def delete_teacher(id: int, current_user: dict=Depends(get_current_user_token_data),
                          db: AsyncSession = Depends(get_db)):
     # 1. Extract user_id from token data
@@ -144,7 +144,7 @@ async def delete_teacher(id: int, current_user: dict=Depends(get_current_user_to
         )
 
 
-@router.patch("/update_teacher/{id}") # Put teacher ID in the URL path
+@router.patch("/update_teacher/{id}", status_code=status.HTTP_200_OK) # Put teacher ID in the URL path
 async def update_teacher(
     id: int, 
     teacher_data: TeacherUpdateSchema, # Use Pydantic schema for request body
@@ -194,7 +194,7 @@ async def update_teacher(
         )
 
 
-@router.patch("/update_course/{id}") # Put course ID in the URL path
+@router.patch("/update_course/{id}", status_code=status.HTTP_200_OK) # Put course ID in the URL path
 async def update_course(
     id: int, 
     course_data: CourseUpdateSchema, # Use Pydantic schema for request body
@@ -245,7 +245,7 @@ async def update_course(
         )
 
 
-@router.delete("/delete_course/{id}")
+@router.delete("/delete_course/{id}", status_code=status.HTTP_200_OK)
 async def delete_course(id: int, current_user: dict=Depends(get_current_user_token_data),
                         db: AsyncSession = Depends(get_db)):
     user_id = current_user.get("user_id")
@@ -274,7 +274,7 @@ async def delete_course(id: int, current_user: dict=Depends(get_current_user_tok
         )
     
 
-@router.get("/get_courses")
+@router.get("/get_courses", status_code=status.HTTP_200_OK)
 async def get_courses(current_user: dict=Depends(get_current_user_token_data), 
                       db: AsyncSession = Depends(get_db)):
     try:
@@ -291,7 +291,7 @@ async def get_courses(current_user: dict=Depends(get_current_user_token_data),
         )
 
 
-@router.post("/add_course")
+@router.post("/add_course", status_code=status.HTTP_200_OK)
 async def add_course(req: CourseRequest, current_user: dict=Depends(get_current_user_token_data),
                      db: AsyncSession = Depends(get_db)):
     try:
@@ -321,7 +321,7 @@ async def add_course(req: CourseRequest, current_user: dict=Depends(get_current_
         )
 
 
-@router.get("/get_relations")
+@router.get("/get_relations", status_code=status.HTTP_200_OK)
 async def get_relations(current_user: dict=Depends(get_current_user_token_data),
                         db: AsyncSession = Depends(get_db)):
     try:
@@ -340,7 +340,7 @@ async def get_relations(current_user: dict=Depends(get_current_user_token_data),
         )
 
 
-@router.post("/add_relation")
+@router.post("/add_relation", status_code=status.HTTP_200_OK)
 async def add_relation(req: RelationSchema, current_user: dict=Depends(get_current_user_token_data),
                        db: AsyncSession = Depends(get_db)):
     try:
@@ -362,7 +362,7 @@ async def add_relation(req: RelationSchema, current_user: dict=Depends(get_curre
         )
 
 
-@router.delete("/delete_relation/{id}")
+@router.delete("/delete_relation/{id}", status_code=status.HTTP_200_OK)
 async def delete_relation(id: int, current_user: dict=Depends(get_current_user_token_data),
                           db: AsyncSession = Depends(get_db)):
     
@@ -392,7 +392,7 @@ async def delete_relation(id: int, current_user: dict=Depends(get_current_user_t
         )
 
 
-@router.get("/get_all_user_schedules_list/{user_id}")
+@router.get("/get_all_user_schedules_list/{user_id}", status_code=status.HTTP_200_OK)
 async def get_all_user_schedules_list(user_id: int, current_user: dict=Depends(get_current_user_token_data)):
     try:
         DB_NAME = "university_scheduler"
@@ -416,7 +416,7 @@ async def get_all_user_schedules_list(user_id: int, current_user: dict=Depends(g
         )
 
 
-@router.get("/get_user_schedule/{task_id}")
+@router.get("/get_user_schedule/{task_id}", status_code=status.HTTP_200_OK)
 async def get_user_schedule(task_id: str, current_user: dict=Depends(get_current_user_token_data)):
     try:
         DB_NAME = "university_scheduler"
@@ -444,7 +444,7 @@ async def get_user_schedule(task_id: str, current_user: dict=Depends(get_current
         )
 
 
-@router.delete("/delete_user_schedule/{task_id}")
+@router.delete("/delete_user_schedule/{task_id}", status_code=status.HTTP_200_OK)
 async def delete_user_schedule(task_id: str, current_user: dict=Depends(get_current_user_token_data)):
     try:
         DB_NAME = "university_scheduler"
