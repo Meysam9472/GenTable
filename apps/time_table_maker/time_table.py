@@ -144,7 +144,7 @@ async def delete_teacher(id: int, current_user: dict=Depends(get_current_user_to
         )
 
 
-@router.patch("/update_teacher/{id}") # Put ID in the URL path
+@router.patch("/update_teacher/{id}") # Put teacher ID in the URL path
 async def update_teacher(
     id: int, 
     teacher_data: TeacherUpdateSchema, # Use Pydantic schema for request body
@@ -194,7 +194,7 @@ async def update_teacher(
         )
 
 
-@router.patch("/update_course/{id}") # Put ID in the URL path
+@router.patch("/update_course/{id}") # Put course ID in the URL path
 async def update_course(
     id: int, 
     course_data: CourseUpdateSchema, # Use Pydantic schema for request body
@@ -241,7 +241,7 @@ async def update_course(
         await db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"An unexpected error occurred while updating the course.{e}"
+            detail="An unexpected error occurred while updating the course."
         )
 
 
