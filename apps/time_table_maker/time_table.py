@@ -1,7 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from .tasks import time_table_maker_task
 from celery.result import AsyncResult
 from celery_worker import celery_app
+
+from throttling import limiter
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from models.users_models import User
@@ -22,7 +24,9 @@ router = APIRouter(prefix="/schedule", tags=["Schedule"])
 
 
 @router.post("/start")
-async def start_scheduling(req: ScheduleRequest, current_user: dict=Depends(get_current_user_token_data),
+@limiter.limit("1/minute")
+async def start_scheduling(request: Request, req: ScheduleRequest,
+                           current_user: dict=Depends(get_current_user_token_data),
                            db: AsyncSession = Depends(get_db)):
     
     current_user_id = current_user.get("user_id")
