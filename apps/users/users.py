@@ -1,18 +1,19 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Body
 from dependencies import get_postgres_db_connection as get_db
 
-from schemas.users_schema import UserCreate, UserResponse, RefreshTokenRequest, AddCreditRequest
+from schemas.users_schema import UserCreate, UserResponse, RefreshTokenRequest
+from schemas.users_schema import AddCreditRequest, UserResetPassword
+
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from typing import List
 
 from database import AsyncSessionLocal
 from models.users_models import User
-from .security import get_password_hash
 
 from jose import JWTError, jwt
 from .security import create_access_token, REFRESH_SECRET_KEY, ALGORITHM
-from .security import verify_password, create_refresh_token
+from .security import verify_password, create_refresh_token, get_password_hash
 
 from models.users_models import UserRole
 
@@ -51,9 +52,80 @@ async def create_user(user_in: UserCreate, db: AsyncSession = Depends(get_db)):
     return new_user
 
 
+@router.post('/reset-user-password', status_code=status.HTTP_200_OK)
+async def reset_user_password(
+    req: UserResetPassword,
+    current_user: dict = Depends(get_current_user_token_data),
+    db: AsyncSession = Depends(get_db)
+):
+    try:
+        # 1. Fetch user
+        user_data = await db.get(User, req.user_id)
+        if not user_data:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found."
+            )
+        
+        current_user_role = current_user.get("role")
+        current_user_id = int(current_user.get("user_id"))
+        
+        # 2. Check Permissions
+        is_admin = current_user_role in [UserRole.ADMIN.value, UserRole.SUPER_ADMIN.value]
+        is_owner = user_data.id == current_user_id
+
+        if not is_admin and not is_owner:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You don't have permission to change this password."
+            )
+
+        # 3. Password Verification Logic
+        if is_admin:
+            # Admin can reset any password without verification
+            pass 
+        else:
+            # Regular users MUST provide and verify current password
+            if not req.current_password:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Current password is required for non-admin users."
+                )
+            
+            if not verify_password(req.current_password, user_data.hashed_password):
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Current password is incorrect."
+                )
+
+        # 4. Check if new password is same as old one (Optional but recommended)
+        # Note: Admin might not care about this, but let's keep it for owners
+        if req.current_password == req.new_password:
+             raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="New password cannot be the same as current password."
+            )
+
+        # 5. Update password
+        user_data.hashed_password = get_password_hash(req.new_password)
+        
+        await db.commit()
+        
+        return {"status": "success", "message": f"Password updated by {'Admin' if is_admin else 'Owner'}."}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An unexpected error occurred while resetting the password."
+        )
+
+
 @router.get("/", response_model=List[UserResponse])
 async def read_users(skip: int = 0, limit: int = 100, db: AsyncSession = Depends(get_db),
-                     current_admin: dict = Depends(require_admin_role) ):
+                     current_admin: dict = Depends(require_admin_role)):
     """
     Get a list of users.
     """
@@ -69,7 +141,7 @@ async def read_user(user_id: int, db: AsyncSession = Depends(get_db),
     Get a specific user by ID.
     """
     current_user_role = current_user.get("role")
-    current_user_id = current_user.get("user_id")
+    current_user_id = int(current_user.get("user_id"))
     
     if current_user_role not in [UserRole.ADMIN.name, UserRole.SUPER_ADMIN.name]:
         if user_id != current_user_id:
@@ -172,11 +244,11 @@ async def refresh_access_token(request_data: RefreshTokenRequest):
         raise credentials_exception
 
 
-@router.post("/change_user_credit", status_code=status.HTTP_200_OK)
+@router.post("/change-user-credit", status_code=status.HTTP_200_OK)
 async def change_user_credit(req: AddCreditRequest, db: AsyncSession = Depends(get_db),
                     current_admin: dict = Depends(require_admin_role)):
     """
-    Add credit for a user. value can be negative for decreasing user's credite.
+    Add credit for a user. Amount value can be negative for decreasing user's credite.
     """
     try:
         user_data = await db.get(User, req.user_id)
@@ -189,10 +261,9 @@ async def change_user_credit(req: AddCreditRequest, db: AsyncSession = Depends(g
 
         new_amount = user_data.credit + req.amount
         if new_amount < 0:
-                raise HTTPException(
+            raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Credit amount must be at least 0. The new amount will make credit lower than 0."
-            )
+                detail="Credit amount must be at least 0. The new amount will make credit lower than 0.")
 
         user_data.credit = new_amount
         
@@ -215,7 +286,7 @@ async def change_user_credit(req: AddCreditRequest, db: AsyncSession = Depends(g
         )
 
 
-@router.get("/get_user_credit/{user_id}", status_code=status.HTTP_200_OK)
+@router.get("/get-user-credit/{user_id}", status_code=status.HTTP_200_OK)
 async def get_user_credit(user_id: int, db: AsyncSession = Depends(get_db),
                           current_admin: dict = Depends(require_admin_role)):
     """

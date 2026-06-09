@@ -18,6 +18,12 @@ class UserResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class UserResetPassword(BaseModel):
+    user_id: int
+    current_password: Optional[str] = None # For regular users it's required
+    new_password: str
+
+
 class RefreshTokenRequest(BaseModel):
     refresh_token: str
 
