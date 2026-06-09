@@ -98,7 +98,7 @@ async def reset_user_password(
                     detail="Current password is incorrect."
                 )
 
-        # 4. Check if new password is same as old one (Optional but recommended)
+        # 4. Check if new password is same as old one
         # Note: Admin might not care about this, but let's keep it for owners
         if req.current_password == req.new_password:
              raise HTTPException(
