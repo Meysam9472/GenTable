@@ -1,4 +1,4 @@
-# University Timetable Scheduler 🎓🕒
+# GenTable 🎓🕒
 
 A robust backend system built with FastAPI for automating and managing university course scheduling. The system uses Google OR-Tools to solve the complex timetable constraint programming problem in the background using Celery and Redis. 
 
@@ -57,7 +57,7 @@ It features a dual-database architecture: PostgreSQL for relational data and Mon
 ├── alembic.ini               # Alembic configuration
 ├── CRUL_TEST_EXAMPLES.md     # API curl testing examples
 ├── README.md                 # Project documentation
-└── throttling.py              # Rate limiting settings
+└── throttling.py             # Rate limiting settings
 ```
 
 ## ⚙️ Prerequisites
