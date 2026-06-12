@@ -2,14 +2,14 @@
 
 A robust backend system built with FastAPI for automating and managing university course scheduling. The system uses Google OR-Tools to solve the complex timetable constraint programming problem in the background using Celery and Redis. 
 
-It features a dual-database architecture: PostgreSQL for relational data (Users, Courses, Teachers) and MongoDB for storing the generated schedule results.
+It features a dual-database architecture: PostgreSQL for relational data and MongoDB for storing the generated schedule results.
 
 ## 🚀 Features
 
 *   **Algorithmic Scheduling**: Automated timetable generation using Google OR-Tools.
 *   **Asynchronous Processing**: Heavy scheduling tasks are offloaded to background workers using Celery and Redis.
 *   **Dual Database Architecture**: 
-    *   **PostgreSQL**: Manages structured data (Users, Teachers, Courses) via SQLAlchemy ORM.
+    *   **PostgreSQL**: Manages structured data via SQLAlchemy ORM.
     *   **MongoDB**: Stores the generated, unstructured schedule outputs.
 *   **Authentication & Authorization**: Secure JWT-based login (Access & Refresh tokens) with Argon2 password hashing.
 *   **Role-Based Access Control (RBAC)**: Distinct permissions for Super Admins, Admins, and Normal Users.
@@ -49,17 +49,20 @@ It features a dual-database architecture: PostgreSQL for relational data (Users,
 ├── config.py                 # Application configuration/settings
 ├── database.py               # Database connections (PostgreSQL & MongoDB)
 ├── dependencies.py           # FastAPI dependencies (Auth, DB session)
+├── docker-compose.yml        # Docker compose settings
+├── Dockerfile                # Project's image settings
 ├── main.py                   # FastAPI application entry point
 ├── pyproject.toml            # Poetry dependencies and metadata
 ├── poetry.lock               # Poetry lock file
 ├── alembic.ini               # Alembic configuration
 ├── CRUL_TEST_EXAMPLES.md     # API curl testing examples
-└── README.md                 # Project documentation
+├── README.md                 # Project documentation
+└── throttling.py              # Rate limiting settings
 ```
 
 ## ⚙️ Prerequisites
 
-*   Python 3.10+
+*   Python 3.12+
 *   PostgreSQL
 *   MongoDB
 *   Redis
@@ -74,13 +77,13 @@ It features a dual-database architecture: PostgreSQL for relational data (Users,
 
 2. **Create and activate a virtual environment:**
    ```
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   python3.12 -m venv .venv
+   source .venv/bin/activate  # On Windows: .venv\Scripts\activate
    ```
 
 3. **Install dependencies:**
    ```bash
-   pip install -r requirements.txt
+   poetry install --no-root
    ```
 
 4. **Database Setup:**
@@ -95,12 +98,12 @@ It features a dual-database architecture: PostgreSQL for relational data (Users,
 
 You need to run three separate processes for the application to work fully:
 
-1. **Start the FastAPI server:**
+1. **Start the FastAPI server(Terminal 1):**
    ```bash
-   uvicorn main:app --reload
+   python main.py
    ```
 
-2. **Start the Celery worker (Linux/macOS):**
+2. **Start the Celery worker (Linux/macOS, Terminal 2):**
    ```bash
    celery -A celery_worker.celery_app worker --loglevel=info
    ```
@@ -109,8 +112,8 @@ You need to run three separate processes for the application to work fully:
 ## 📡 Key API Endpoints
 
 **Authentication & Users**
-*   `POST /login` - Get JWT access and refresh tokens.
-*   `POST /users/` - Create a new user.
+*   `POST /users/login` - Get JWT access and refresh tokens.
+*   `POST /users/sing-up` - Create a new user.
 *   `GET /users/` - List all users (Admin only).
 *   `DELETE /users/{id}` - Delete a user (Admin only).
 
