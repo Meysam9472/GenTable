@@ -7,6 +7,7 @@ class UserCreate(BaseModel):
     username: str
     password: str
     role: Optional[UserRole] = UserRole.USER
+    phone_number: str
 
 
 class UserResponse(BaseModel):

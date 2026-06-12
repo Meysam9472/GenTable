@@ -29,27 +29,36 @@ async def create_user(user_in: UserCreate, db: AsyncSession = Depends(get_db)):
     """
     Create a new user.
     """
-    # Check if username already exists
-    result = await db.execute(select(User).where(User.username == user_in.username))
-    existing_user = result.scalars().first()
-    if existing_user:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Username already registered"
-        )
+    try:
+        # Check if username already exists
+        result = await db.execute(select(User).where(User.username == user_in.username))
+        existing_user = result.scalars().first()
+        if existing_user:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Username already registered"
+            )
 
-    # Hash the password and save the user
-    hashed_password = get_password_hash(user_in.password)
-    new_user = User(
-        username=user_in.username,
-        hashed_password=hashed_password,
-        role=user_in.role
-    )
+        # Hash the password and save the user
+        hashed_password = get_password_hash(user_in.password)
+        new_user = User(
+            username=user_in.username,
+            hashed_password=hashed_password,
+            role=user_in.role,
+            phone_number=user_in.phone_number
+        )
+        
+        db.add(new_user)
+        await db.commit()
+        await db.refresh(new_user)
+        return new_user
     
-    db.add(new_user)
-    await db.commit()
-    await db.refresh(new_user)
-    return new_user
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"An unexpected error occurred while singing up. {e}"
+        )
 
 
 @router.post('/reset-user-password', status_code=status.HTTP_200_OK)
@@ -129,9 +138,16 @@ async def read_users(skip: int = 0, limit: int = 100, db: AsyncSession = Depends
     """
     Get a list of users.
     """
-    result = await db.execute(select(User).offset(skip).limit(limit))
-    users = result.scalars().all()
-    return users
+    try:
+        result = await db.execute(select(User).offset(skip).limit(limit))
+        users = result.scalars().all()
+        return users
+    
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An unexpected error occurred while fetching data."
+        )
 
 
 @router.get("/{user_id}", response_model=UserResponse)
@@ -140,19 +156,26 @@ async def read_user(user_id: int, db: AsyncSession = Depends(get_db),
     """
     Get a specific user by ID.
     """
-    current_user_role = current_user.get("role")
-    current_user_id = int(current_user.get("user_id"))
+    try:
+        current_user_role = current_user.get("role")
+        current_user_id = int(current_user.get("user_id"))
+        
+        if current_user_role not in [UserRole.ADMIN.name, UserRole.SUPER_ADMIN.name]:
+            if user_id != current_user_id:
+                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                                    detail="You are not allowed to perform this action.")
+        
+        result = await db.execute(select(User).where(User.id == user_id))
+        user = result.scalars().first()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        return user
     
-    if current_user_role not in [UserRole.ADMIN.name, UserRole.SUPER_ADMIN.name]:
-        if user_id != current_user_id:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
-                                detail="You are not allowed to perform this action.")
-    
-    result = await db.execute(select(User).where(User.id == user_id))
-    user = result.scalars().first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    return user
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An unexpected error occurred while fetching data."
+        )
 
 
 @router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -161,14 +184,20 @@ async def delete_user(user_id: int, db: AsyncSession = Depends(get_db),
     """
     Delete a user by ID.
     """
-    result = await db.execute(select(User).where(User.id == user_id))
-    user = result.scalars().first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    
-    await db.delete(user)
-    await db.commit()
-    return None
+    try:
+        result = await db.execute(select(User).where(User.id == user_id))
+        user = result.scalars().first()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        await db.delete(user)
+        await db.commit()
+        return None
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An unexpected error occurred while deleting user."
+        )
 
 
 @router.post("/login")

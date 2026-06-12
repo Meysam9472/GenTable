@@ -96,7 +96,7 @@ Use the `task_id` received from the previous request to check the status of your
 ```bash
 curl -X 'GET' "http://localhost:8000/schedule/status/YOUR_TASK_ID" \
   -H 'accept: application/json' \
-  -H 'Authorization: Bearer <YOUR_ACCESS_TOKEN> \
+  -H 'Authorization: Bearer <YOUR_ACCESS_TOKEN>' \
 ```
 **Example:**
 
@@ -142,7 +142,8 @@ curl -X 'POST' "http://localhost:8000/users/sing-up" \
   -d '{
   "username": "admin_user",
   "password": "my_secure_password",
-  "role": "admin"
+  "role": "admin",
+  "phone_number": "09189181818"
 }'
 ```
 
