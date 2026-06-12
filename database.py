@@ -11,12 +11,12 @@ load_dotenv()
 
 
 # Get environment variables
-user = os.getenv("POSTGRES_USER_NAME")
+user = os.getenv("POSTGRES_USER")
 # Use quote_plus to handle special characters like #, %, $, ^ in password
 password = quote_plus(os.getenv("POSTGRES_PASSWORD", ""))
 host = os.getenv("POSTGRES_HOST")
 port = os.getenv("POSTGRES_PORT")
-db_name = os.getenv("POSTGRES_DB_NAME")
+db_name = os.getenv("POSTGRES_DB")
 
 # Async database setting is for fastapi async apis.
 DATABASE_URL = f"postgresql+asyncpg://{user}:{password}@{host}:{port}/{db_name}"
