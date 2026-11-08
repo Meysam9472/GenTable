@@ -142,7 +142,6 @@ curl -X 'POST' "http://localhost:8000/users/sing-up" \
   -d '{
   "username": "admin_user",
   "password": "my_secure_password",
-  "role": "admin",
   "phone_number": "09189181818"
 }'
 ```

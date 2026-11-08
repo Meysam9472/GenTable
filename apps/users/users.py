@@ -44,7 +44,6 @@ async def create_user(user_in: UserCreate, db: AsyncSession = Depends(get_db)):
         new_user = User(
             username=user_in.username,
             hashed_password=hashed_password,
-            role=user_in.role,
             phone_number=user_in.phone_number
         )
         

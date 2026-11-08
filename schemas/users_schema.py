@@ -6,7 +6,6 @@ from models.users_models import UserRole
 class UserCreate(BaseModel):
     username: str
     password: str
-    role: Optional[UserRole] = UserRole.USER
     phone_number: str
 
 
