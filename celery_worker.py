@@ -1,18 +1,22 @@
 from celery import Celery
 import sys
 import os
+from dotenv import load_dotenv
+
+
+load_dotenv()
 
 # This line is for discovering tasks by celery(for autodiscover_tasks)
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), ".")))
 
 celery_app = Celery(
     "time_table_worker",
-    broker="redis://127.0.0.1:6379",
-    backend="redis://127.0.0.1:6379"
+    broker=os.getenv("CELERY_BROKER"),
+    backend=os.getenv("CELERY_BACKEND")
 )
 
-celery_app.conf.broker_url = "redis://127.0.0.1:6379"
-celery_app.conf.result_backend = "redis://127.0.0.1:6379"
+celery_app.conf.broker_url = os.getenv("CELERY_BROKER")
+celery_app.conf.result_backend = os.getenv("CELERY_BACKEND")
 
 celery_app.autodiscover_tasks(['apps.time_table_maker'])
 
