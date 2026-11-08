@@ -49,7 +49,7 @@ services:
   celery_worker:
     build: .
     container_name: gen_table_celery_worker
-    command: celery -A celery_worker worker --loglevel=info --concurrency=2
+    command: celery -A celery_worker_docker worker --loglevel=info --concurrency=2
     env_file:
       - .env
     depends_on:
