@@ -133,8 +133,8 @@ json
 
 These `curl` commands are for testing the `user management` and `authentication` endpoints.
 
-### 1. Create a New User (Admin)
-Creates a new user with an ADMIN role.
+### 1. Create a New User
+Creates a new user with an USER role.
 ```bash
 curl -X 'POST' "http://localhost:8000/users/sing-up" \
   -H 'accept: application/json' \
