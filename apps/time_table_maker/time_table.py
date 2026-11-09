@@ -19,6 +19,24 @@ from dependencies import get_mongo_connection
 from schemas.time_table_schema import ScheduleRequest, TeacherRequest, CourseRequest
 from schemas.time_table_schema import CourseUpdateSchema, TeacherUpdateSchema, RelationSchema
 
+from models.users_models import User, UserRole
+
+DB_NAME = "university_scheduler"
+COLLECTION_NAME = "schedules"
+ADMIN_ROLES = (UserRole.ADMIN.name, UserRole.SUPER_ADMIN.name)
+
+
+def _is_admin(current_user: dict) -> bool:
+    return current_user.get("role") in ADMIN_ROLES
+
+
+def _schedule_filter(task_id: str, current_user: dict) -> dict:
+    """Admins can find any schedule. Other users only find their own."""
+    query = {"task_id": task_id}
+    if not _is_admin(current_user):
+        query["user_id"] = current_user["user_id"]
+    return query
+
 
 router = APIRouter(prefix="/schedule", tags=["Schedule"])
 
@@ -393,23 +411,25 @@ async def delete_relation(id: int, current_user: dict=Depends(get_current_user_t
 
 
 @router.get("/get-all-user-schedules-list/{user_id}", status_code=status.HTTP_200_OK)
-async def get_all_user_schedules_list(user_id: int, current_user: dict=Depends(get_current_user_token_data)):
+async def get_all_user_schedules_list(user_id: int,
+                                      current_user: dict = Depends(get_current_user_token_data)):
+    # A normal user can only list their own schedules.
+    if not _is_admin(current_user) and user_id != current_user["user_id"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You are not allowed to perform this action."
+        )
     try:
-        DB_NAME = "university_scheduler"
-        COLLECTION_NAME = "schedules" 
-        
         with get_mongo_connection() as client:
-            db = client[DB_NAME]
-            collection = db[COLLECTION_NAME] 
-            # Convert cursor to list and exclude '_id' to avoid JSON serialization errors
+            collection = client[DB_NAME][COLLECTION_NAME]
+            # Exclude '_id' to avoid JSON serialization errors
             user_schedules = list(collection.find(
-                {"user_id": user_id}, 
+                {"user_id": user_id},
                 {"_id": 0, "schedule_name": 1, "task_id": 1, "created_at": 1, "status": 1}
             ))
-        
         return {"user_schedules": user_schedules}
-            
-    except Exception as e:
+
+    except Exception:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An unexpected error occurred while fetching user schedule list."
@@ -417,27 +437,24 @@ async def get_all_user_schedules_list(user_id: int, current_user: dict=Depends(g
 
 
 @router.get("/get-user-schedule/{task_id}", status_code=status.HTTP_200_OK)
-async def get_user_schedule(task_id: str, current_user: dict=Depends(get_current_user_token_data)):
+async def get_user_schedule(task_id: str,
+                            current_user: dict = Depends(get_current_user_token_data)):
     try:
-        DB_NAME = "university_scheduler"
-        COLLECTION_NAME = "schedules" 
-        
         with get_mongo_connection() as client:
-            db = client[DB_NAME]
-            collection = db[COLLECTION_NAME] 
+            collection = client[DB_NAME][COLLECTION_NAME]
             user_schedule = collection.find_one(
-                {"task_id": task_id}, 
+                _schedule_filter(task_id, current_user),
                 {"_id": 0, "schedule_name": 1, "created_at": 1, "result": 1, "status": 1}
             )
-            
+
         if not user_schedule:
             raise HTTPException(status_code=404, detail="Schedule not found.")
-        
+
         return {"user_schedule": user_schedule}
-            
+
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An unexpected error occurred while fetching the user schedule."
@@ -445,26 +462,22 @@ async def get_user_schedule(task_id: str, current_user: dict=Depends(get_current
 
 
 @router.delete("/delete-user-schedule/{task_id}", status_code=status.HTTP_200_OK)
-async def delete_user_schedule(task_id: str, current_user: dict=Depends(get_current_user_token_data)):
+async def delete_user_schedule(task_id: str,
+                               current_user: dict = Depends(get_current_user_token_data)):
     try:
-        DB_NAME = "university_scheduler"
-        COLLECTION_NAME = "schedules" 
-        
         with get_mongo_connection() as client:
-            db = client[DB_NAME]
-            collection = db[COLLECTION_NAME]
-            # Delete and get result
-            delete_result = collection.delete_one({"task_id": task_id})
-        
+            collection = client[DB_NAME][COLLECTION_NAME]
+            delete_result = collection.delete_one(_schedule_filter(task_id, current_user))
+
         if delete_result.deleted_count == 0:
             raise HTTPException(status_code=404, detail="Schedule not found to delete.")
-        
+
         return {"result": f"Schedule deleted successfully (task_id: {task_id})."}
-            
+
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"An unexpected error occurred while deleting the user schedule.{e}"
+            detail="An unexpected error occurred while deleting the user schedule."
         )
