@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi import APIRouter, Depends, HTTPException, status, Request, Query
 from .tasks import time_table_maker_task
 from celery.result import AsyncResult
 from celery_worker import celery_app
@@ -536,3 +536,50 @@ async def delete_user_schedule(task_id: str,
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An unexpected error occurred while deleting the user schedule."
         )
+
+
+@router.get("/get-all-user-tasks/{user_id}", status_code=status.HTTP_200_OK)
+def get_all_user_tasks(user_id: int,
+                       skip: int = Query(0, ge=0),
+                       limit: int = Query(50, ge=1, le=100),
+                       with_status: bool = False,
+                       current_user: dict = Depends(get_current_user_token_data)):
+    """
+    List the tasks (newest first) that a user has started.
+    - Normal users can only list their own tasks.
+    - Admins can list the tasks of any user.
+    - with_status=true adds the live Celery state of each task.
+    - skip and limit are for pagination.
+    """
+    if not _is_admin(current_user) and user_id != current_user["user_id"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You are not allowed to perform this action."
+        )
+
+    try:
+        with get_mongo_connection() as client:
+            collection = client[DB_NAME][TASKS_OF_USERS_COLLECTION_NAME]
+            total = collection.count_documents({"user_id": user_id})
+            tasks = list(
+                collection.find({"user_id": user_id},
+                                {"_id": 0, "task_id": 1, "created_at": 1})
+                .sort("_id", -1)   # newest first (the _id contains the creation time)
+                .skip(skip)
+                .limit(limit)
+            )
+
+        if with_status:
+            for task in tasks:
+                task["status"] = AsyncResult(task["task_id"], app=celery_app).state
+
+        return {"user_id": user_id, "total": total, "skip": skip, "limit": limit,
+                "tasks": tasks}
+
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An unexpected error occurred while fetching the user's tasks."
+        )
+
+

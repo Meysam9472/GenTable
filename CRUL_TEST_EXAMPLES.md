@@ -128,6 +128,14 @@ json
 }
 ```
 
+### 3. Get all user's tasks
+Get all user's task and schedules by `user_id`.
+```bash
+curl -X GET "http://localhost:8000/schedule/get-all-user-tasks/1?limit=20&with_status=true" \
+     -H "accept: application/json" \
+     -H "Authorization: Bearer <YOUR_ACCESS_TOKEN>"
+```
+
 
 ## API Tests for User Management and Authentication
 
@@ -361,6 +369,5 @@ Delete a user schedule by `task_id`.
 curl -X DELETE "http://localhost:8000/schedule/delete-user-schedule/123" \
      -H "accept: application/json" \
      -H "Authorization: Bearer <YOUR_ACCESS_TOKEN>"
-
 ```
 
