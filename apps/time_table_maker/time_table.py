@@ -13,16 +13,22 @@ from sqlalchemy.future import select
 from sqlalchemy import delete, and_
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
-from dependencies import get_current_user_token_data, require_admin_role
+from dependencies import get_current_user_token_data
 from dependencies import get_mongo_connection
 
 from schemas.time_table_schema import ScheduleRequest, TeacherRequest, CourseRequest
 from schemas.time_table_schema import CourseUpdateSchema, TeacherUpdateSchema, RelationSchema
 
 from models.users_models import User, UserRole
+from fastapi.concurrency import run_in_threadpool
+
+
+router = APIRouter(prefix="/schedule", tags=["Schedule"])
+
 
 DB_NAME = "university_scheduler"
 COLLECTION_NAME = "schedules"
+TASKS_OF_USERS_COLLECTION_NAME = "task_of_user"
 ADMIN_ROLES = (UserRole.ADMIN.name, UserRole.SUPER_ADMIN.name)
 
 
@@ -38,7 +44,37 @@ def _schedule_filter(task_id: str, current_user: dict) -> dict:
     return query
 
 
-router = APIRouter(prefix="/schedule", tags=["Schedule"])
+def _save_task_of_user(task_id: str, user_id: int) -> None:
+    '''
+    Save task ids that belongs to specific user to retrive task's different conditions.
+    '''
+    with get_mongo_connection() as client:
+        # If database and collection do not exist, they will be created on first insert.
+        db = client[DB_NAME]
+        collection = db[TASKS_OF_USERS_COLLECTION_NAME]
+        
+        document = {
+            "user_id": user_id,
+            "task_id": task_id,
+            "created_at": datetime.now(timezone.utc),
+        }
+        
+        # Insert the result into the task_of_user collection
+        collection.insert_one(document)
+
+
+def _get_tasks_of_user(user_id): 
+    with get_mongo_connection() as client:
+        # If database and collection do not exist, they will be created on first insert.
+        db = client[DB_NAME]
+        collection = db[TASKS_OF_USERS_COLLECTION_NAME]
+
+        # Find the user's tasks condition.
+        users_tasks = list(collection.find((
+                {"user_id": user_id},
+                {"_id": 0, "task_id": 1}
+            )))
+        return users_tasks
 
 
 @router.post("/start", status_code=status.HTTP_200_OK)
@@ -56,12 +92,31 @@ async def start_scheduling(request: Request, req: ScheduleRequest,
     
     task = time_table_maker_task.delay(req.teachers, req.courses, req.num_rooms,
                                        req.cohorts, req.days, req.hours, current_user_id, req.schedule_name)
+    
+    # pymongo is blocking, so run it in a thread to keep the event loop free.
+    await run_in_threadpool(_save_task_of_user, task.id, current_user_id)
+    
     return {"task_id": task.id, "message": "Task started in background."}
 
 
 @router.get("/status/{task_id}", status_code=status.HTTP_200_OK)
-def get_schedule_status(task_id: str, current_admin: dict = Depends(require_admin_role)):
+def get_schedule_status(task_id: str, current_user: dict=Depends(get_current_user_token_data)):
+    """
+    Get condition of the a task, admins can see all task conditions.
+    """
+     # Normal users can only check their own tasks. Admins can check any task.
+    if not _is_admin(current_user):
+        with get_mongo_connection() as client:
+            owner = client[DB_NAME][TASKS_OF_USERS_COLLECTION_NAME].find_one(
+                {"task_id": task_id, "user_id": current_user["user_id"]},
+                {"_id": 1},
+            )
+        if owner is None:
+            raise HTTPException(status_code=404, detail="Task not found.")
+    
     task_result = AsyncResult(task_id, app=celery_app)
+    
+    user_tasks = _get_tasks_of_user()
     
     if task_result.state == 'PENDING':
         return {"status": "Task is pending in a queue"}
