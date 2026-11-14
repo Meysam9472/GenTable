@@ -417,25 +417,62 @@ async def get_relations(current_user: dict=Depends(get_current_user_token_data),
 
 
 @router.post("/add-relation", status_code=status.HTTP_200_OK)
-async def add_relation(req: RelationSchema, current_user: dict=Depends(get_current_user_token_data),
+async def add_relation(req: RelationSchema,
+                       current_user: dict = Depends(get_current_user_token_data),
                        db: AsyncSession = Depends(get_db)):
+    user_id = current_user.get("user_id")
     try:
-        user_id = current_user.get("user_id")
-        teacher_id = req.teacher_id
-        course_id = req.course_id
-        new_relation = UserTeacherCourseRelation(user_id=user_id, teacher_id=teacher_id, 
-                                                 course_id=course_id)
+        # The teacher must exist AND belong to the current user.
+        teacher = await db.execute(
+            select(Teacher.id).where(Teacher.id == req.teacher_id, Teacher.user_id == user_id)
+        )
+        if teacher.scalar_one_or_none() is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                                detail="Teacher not found.")
+
+        # The course must exist AND belong to the current user.
+        course = await db.execute(
+            select(Course.id).where(Course.id == req.course_id, Course.user_id == user_id)
+        )
+        if course.scalar_one_or_none() is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                                detail="Course not found.")
+
+        # Friendly message for duplicates (the database constraint is the real protection).
+        duplicate = await db.execute(
+            select(UserTeacherCourseRelation.id).where(
+                UserTeacherCourseRelation.user_id == user_id,
+                UserTeacherCourseRelation.teacher_id == req.teacher_id,
+                UserTeacherCourseRelation.course_id == req.course_id,
+            )
+        )
+        if duplicate.first() is not None:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT,
+                                detail="This relation already exists.")
+
+        new_relation = UserTeacherCourseRelation(user_id=user_id, teacher_id=req.teacher_id,
+                                                 course_id=req.course_id)
         db.add(new_relation)
         await db.commit()
         await db.refresh(new_relation)
-        
+
         return {"result": f"Relation: {new_relation.id} added successfully."}
-    except Exception as e:
+
+    except HTTPException:
+        raise
+    except IntegrityError:
+        # Two identical requests at the same time can both pass the duplicate check.
+        # The unique constraint stops the second one.
+        await db.rollback()
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT,
+                            detail="This relation already exists.")
+    except Exception:
         await db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"An unexpected error occurred while adding the relation."
+            detail="An unexpected error occurred while adding the relation."
         )
+
 
 
 @router.delete("/delete-relation/{id}", status_code=status.HTTP_200_OK)

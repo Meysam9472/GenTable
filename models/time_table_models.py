@@ -1,5 +1,5 @@
 import enum
-from sqlalchemy import Column, Integer, String, Enum, ForeignKey
+from sqlalchemy import Column, Integer, String, Enum, ForeignKey, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSON
 from sqlalchemy.orm import relationship
 from database import Base
@@ -34,6 +34,9 @@ class Course(Base):
 
 class UserTeacherCourseRelation(Base):
     __tablename__ = "user_teacher_course_relations"
+    __table_args__ = (
+        UniqueConstraint("user_id", "teacher_id", "course_id", name="uq_user_teacher_course"),
+    )
     
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)

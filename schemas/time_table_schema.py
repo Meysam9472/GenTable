@@ -37,5 +37,5 @@ class CourseUpdateSchema(BaseModel):
 
 
 class RelationSchema(BaseModel):
-    teacher_id: int = None
-    course_id: int = None
+    teacher_id: int
+    course_id: int
