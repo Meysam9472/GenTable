@@ -64,17 +64,17 @@ def _save_task_of_user(task_id: str, user_id: int) -> None:
         collection.insert_one(document)
 
 
-def _get_tasks_of_user(user_id): 
+def _get_tasks_of_user(user_id: int): 
     with get_mongo_connection() as client:
         # If database and collection do not exist, they will be created on first insert.
         db = client[DB_NAME]
         collection = db[TASKS_OF_USERS_COLLECTION_NAME]
 
         # Find the user's tasks condition.
-        users_tasks = list(collection.find((
+        users_tasks = list(collection.find(
                 {"user_id": user_id},
                 {"_id": 0, "task_id": 1}
-            )))
+            ))
         return users_tasks
 
 
@@ -106,11 +106,12 @@ def get_schedule_status(task_id: str, current_user: dict=Depends(get_current_use
     """
     Get condition of the a task, admins can see all task conditions.
     """
+    user_id = current_user.get("user_id")
      # Normal users can only check their own tasks. Admins can check any task.
     if not _is_admin(current_user):
         with get_mongo_connection() as client:
             owner = client[DB_NAME][TASKS_OF_USERS_COLLECTION_NAME].find_one(
-                {"task_id": task_id, "user_id": current_user["user_id"]},
+                {"task_id": task_id, "user_id": user_id},
                 {"_id": 1},
             )
         if owner is None:
@@ -118,7 +119,7 @@ def get_schedule_status(task_id: str, current_user: dict=Depends(get_current_use
     
     task_result = AsyncResult(task_id, app=celery_app)
     
-    user_tasks = _get_tasks_of_user()
+    user_tasks = _get_tasks_of_user(user_id)
     
     if task_result.state == 'PENDING':
         return {"status": "Task is pending in a queue"}
@@ -482,7 +483,7 @@ async def get_all_user_schedules_list(user_id: int,
             # Exclude '_id' to avoid JSON serialization errors
             user_schedules = list(collection.find(
                 {"user_id": user_id},
-                {"_id": 0, "schedule_name": 1, "task_id": 1, "created_at": 1, "status": 1}
+                {"_id": 0, "schedule_name": 1, "task_id": 1, "created_at": 1, "status": 1, "result": 1}
             ))
         return {"user_schedules": user_schedules}
 
