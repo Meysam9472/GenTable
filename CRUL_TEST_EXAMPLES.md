@@ -9,7 +9,7 @@ These `curl` commands are for testing the `scheduling` endpoints.
 
 Send a `POST` request to start the background scheduling task with sample data.
 ```bash
-curl -X 'POST' "http://localhost:8000/schedule/start" \
+curl -X 'POST' "http://localhost:8001/schedule/start" \
   -H 'accept: application/json' \
   -H 'Content-Type: application/json' \
   -H 'Authorization: Bearer <YOUR_ACCESS_TOKEN>' \
@@ -94,14 +94,14 @@ json
 Use the `task_id` received from the previous request to check the status of your task. Replace `YOUR_TASK_ID` with the actual ID.
 
 ```bash
-curl -X 'GET' "http://localhost:8000/schedule/status/YOUR_TASK_ID" \
+curl -X 'GET' "http://localhost:8001/schedule/status/YOUR_TASK_ID" \
   -H 'accept: application/json' \
   -H 'Authorization: Bearer <YOUR_ACCESS_TOKEN>' \
 ```
 **Example:**
 
 ```bash
-curl -X 'GET' "http://localhost:8000/schedule/status/b9e6c4f0-7b5a-4b9e-9b0a-1c2d3e4f5a6b" \
+curl -X 'GET' "http://localhost:8001/schedule/status/b9e6c4f0-7b5a-4b9e-9b0a-1c2d3e4f5a6b" \
   -H 'accept: application/json' \
   -H 'Authorization: Bearer <YOUR_ACCESS_TOKEN> \
 ```
@@ -135,7 +135,7 @@ These `curl` commands are for testing the `user management` and `authentication`
 ### 1. Create a New User
 Creates a new user with an USER role.
 ```bash
-curl -X 'POST' "http://localhost:8000/users/sing-up" \
+curl -X 'POST' "http://localhost:8001/users/sing-up" \
   -H 'accept: application/json' \
   -H 'Content-Type: application/json' \
   -d '{
@@ -150,7 +150,7 @@ Authenticates the user and retrieves the `access_token` and `refresh_token`.
 **Note:** Copy the `access_token` and `refresh_token` from the response for the next steps.
 
 ```bash
-curl -X 'POST' "http://localhost:8000/users/login" \
+curl -X 'POST' "http://localhost:8001/users/login" \
   -H 'accept: application/json' \
   -H 'Content-Type: application/x-www-form-urlencoded' \
   -d 'username=admin_user&password=my_secure_password'
@@ -160,7 +160,7 @@ curl -X 'POST' "http://localhost:8000/users/login" \
 Requires a valid `access_token` with ADMIN role. Replace `<YOUR_ACCESS_TOKEN>` with the token received from the login step.
 
 ```bash
-curl -X 'GET' "http://localhost:8000/users/" \
+curl -X 'GET' "http://localhost:8001/users/" \
   -H 'accept: application/json' \
   -H 'Authorization: Bearer <YOUR_ACCESS_TOKEN>'
 ```
@@ -169,7 +169,7 @@ curl -X 'GET' "http://localhost:8000/users/" \
 Uses the `refresh_token` to get a new `access_token` when the original one expires. Replace `<YOUR_REFRESH_TOKEN>` with the refresh token from the login response.
 
 ```bash
-curl -X 'POST' "http://localhost:8000/users/refresh" \
+curl -X 'POST' "http://localhost:8001/users/refresh" \
   -H 'accept: application/json' \
   -H 'Content-Type: application/json' \
   -d '{
@@ -181,7 +181,7 @@ curl -X 'POST' "http://localhost:8000/users/refresh" \
 Deletes a user by ID. Requires a valid `access_token` with ADMIN role. Replace `1` with the actual user ID and provide your token.
 
 ```bash
-curl -X 'DELETE' "http://localhost:8000/users/1" \
+curl -X 'DELETE' "http://localhost:8001/users/1" \
   -H 'accept: application/json' \
   -H 'Authorization: Bearer <YOUR_ACCESS_TOKEN>'
 ```
@@ -190,7 +190,7 @@ curl -X 'DELETE' "http://localhost:8000/users/1" \
 Adding or decreasing credit for a user by ID(`amount` value could be negative). Requires a valid `access_token` with ADMIN role.
 
 ```bash
-curl -X 'POST' "http://localhost:8000/users/change-user-credit" \
+curl -X 'POST' "http://localhost:8001/users/change-user-credit" \
   -H 'accept: application/json' \
   -H 'Content-Type: application/json' \
   -H 'Authorization: Bearer <YOUR_ACCESS_TOKEN>' \
@@ -205,7 +205,7 @@ curl -X 'POST' "http://localhost:8000/users/change-user-credit" \
 Returns credit of a user by ID. Requires a valid `access_token` with ADMIN role. Replace `1` with the actual user ID.
 
 ```bash
-curl -X 'GET' "http://localhost:8000/users/get-user-credit/1" \
+curl -X 'GET' "http://localhost:8001/users/get-user-credit/1" \
   -H 'accept: application/json' \
   -H 'Authorization: Bearer <YOUR_ACCESS_TOKEN>'
 ```
@@ -214,7 +214,7 @@ curl -X 'GET' "http://localhost:8000/users/get-user-credit/1" \
 An api for admins and account owner for chaging user's password.
 
 ```bash
-curl -X 'POST' "http://localhost:8000/users/reset-user-password" \
+curl -X 'POST' "http://localhost:8001/users/reset-user-password" \
   -H 'accept: application/json' \
   -H 'Content-Type: application/json' \
   -H 'Authorization: Bearer <YOUR_ACCESS_TOKEN>' \
@@ -234,7 +234,7 @@ These `curl` commands are for testing the `data management` endpoints(like addin
 ### 1. Add a new teacher
 Create a new teacher for the current user.
 ```bash
-curl -X POST "http://localhost:8000/schedule/add-teacher" \
+curl -X POST "http://localhost:8001/schedule/add-teacher" \
      -H "Authorization: Bearer <YOUR_ACCESS_TOKEN>" \
      -H "Content-Type: application/json" \
      -d '{
@@ -247,21 +247,21 @@ curl -X POST "http://localhost:8000/schedule/add-teacher" \
 ### 2. Retrieve all teachers
 Get all teachers for the current user.
 ```bash
-curl -X GET "http://localhost:8000/schedule/get-teachers" \
+curl -X GET "http://localhost:8001/schedule/get-teachers" \
      -H "Authorization: Bearer <YOUR_ACCESS_TOKEN>"
 ```
 
 ### 3. Delete a teacher by ID (e.g., id=1 passed as a path parameter)
 The `teacher id` should belongs to the user who requests to this api endpoint.
 ```bash
-curl -X DELETE "http://localhost:8000/schedule/delete-teacher/1" \
+curl -X DELETE "http://localhost:8001/schedule/delete-teacher/1" \
      -H "Authorization: Bearer <YOUR_ACCESS_TOKEN>"
 ```
 
 ### 4. Add a new course
 Create a new course for the current user.
 ```bash
-curl -X POST "http://localhost:8000/schedule/add-course" \
+curl -X POST "http://localhost:8001/schedule/add-course" \
      -H "Authorization: Bearer <YOUR_ACCESS_TOKEN>" \
      -H "Content-Type: application/json" \
      -d '{
@@ -274,7 +274,7 @@ curl -X POST "http://localhost:8000/schedule/add-course" \
 ### 5. Retrieve all courses
 Get all teachers for the current user.
 ``` bash
-curl -X GET "http://localhost:8000/schedule/get-courses" \
+curl -X GET "http://localhost:8001/schedule/get-courses" \
      -H "Authorization: Bearer <YOUR_ACCESS_TOKEN>"
 ```
 
@@ -282,14 +282,14 @@ curl -X GET "http://localhost:8000/schedule/get-courses" \
 The `course id` should belongs to the user who requests to this api endpoint.
 
 ```bash
-curl -X DELETE "http://localhost:8000/schedule/delete-course/2" \
+curl -X DELETE "http://localhost:8001/schedule/delete-course/2" \
      -H "Authorization: Bearer <YOUR_ACCESS_TOKEN>"
 ```
 
 ### 7. Update a teacher by ID (e.g., id=1 passed as a path parameter)
 The `teacher id` should belongs to the user who requests to this api endpoint.
 ```bash
-curl -X PATCH "http://127.0.0.1:8000/schedule/update-teacher/2" \
+curl -X PATCH "http://127.0.0.1:8001/schedule/update-teacher/2" \
      -H "Authorization: Bearer <YOUR_ACCESS_TOKEN>" \
      -H "Content-Type: application/json" \
      -d '{
@@ -301,7 +301,7 @@ curl -X PATCH "http://127.0.0.1:8000/schedule/update-teacher/2" \
 ### 8. Update a course by ID (e.g., id=1 passed as a path parameter)
 The `course id` should belongs to the user who requests to this api endpoint.
 ```bash
-curl -X PATCH "http://127.0.0.1:8000/schedule/update-course/2" \
+curl -X PATCH "http://127.0.0.1:8001/schedule/update-course/2" \
      -H "Authorization: Bearer <YOUR_ACCESS_TOKEN>" \
      -H "Content-Type: application/json" \
      -d '{
@@ -314,7 +314,7 @@ curl -X PATCH "http://127.0.0.1:8000/schedule/update-course/2" \
 ### 9. Add a new relation
 Create a new relation for the current user.
 ```bash
-curl -X POST "http://localhost:8000/schedule/add-relation" \
+curl -X POST "http://localhost:8001/schedule/add-relation" \
      -H "Authorization: Bearer <YOUR_ACCESS_TOKEN>" \
      -H "Content-Type: application/json" \
      -d '{
@@ -326,14 +326,14 @@ curl -X POST "http://localhost:8000/schedule/add-relation" \
 ### 10. Retrieve all relations
 Get all relations for the current user.
 ```bash
-curl -X GET "http://localhost:8000/schedule/get-relations" \
+curl -X GET "http://localhost:8001/schedule/get-relations" \
      -H "Authorization: Bearer <YOUR_ACCESS_TOKEN>"
 ```
 
 ### 11. Delete a relation by ID (e.g., id=1 passed as a path parameter)
 The `relation id` should belongs to the user who requests to this api endpoint.
 ```bash
-curl -X DELETE "http://localhost:8000/schedule/delete-relation/1" \
+curl -X DELETE "http://localhost:8001/schedule/delete-relation/1" \
      -H "Authorization: Bearer <YOUR_ACCESS_TOKEN>"
 ```
 
@@ -341,7 +341,7 @@ curl -X DELETE "http://localhost:8000/schedule/delete-relation/1" \
 ### 12. Get Schedules List
 get all user's schedules as a list by `user_id`.
 ```bash
-curl -X GET "http://localhost:8000/schedule/get-all-user-schedules-list/1" \
+curl -X GET "http://localhost:8001/schedule/get-all-user-schedules-list/1" \
      -H "accept: application/json" \
      -H "Authorization: Bearer <YOUR_ACCESS_TOKEN>"
 ```
@@ -349,7 +349,7 @@ curl -X GET "http://localhost:8000/schedule/get-all-user-schedules-list/1" \
 ### 13. Get User Schedule
 Fetch a user schedule by `task_id`.
 ```bash
-curl -X GET "http://localhost:8000/schedule/get-user-schedule/123" \
+curl -X GET "http://localhost:8001/schedule/get-user-schedule/123" \
      -H "accept: application/json" \
      -H "Authorization: Bearer <YOUR_ACCESS_TOKEN>"
 ```
@@ -357,7 +357,7 @@ curl -X GET "http://localhost:8000/schedule/get-user-schedule/123" \
 ### 14. Delete User Schedule
 Delete a user schedule by `task_id`.
 ```bash
-curl -X DELETE "http://localhost:8000/schedule/delete-user-schedule/123" \
+curl -X DELETE "http://localhost:8001/schedule/delete-user-schedule/123" \
      -H "accept: application/json" \
      -H "Authorization: Bearer <YOUR_ACCESS_TOKEN>"
 ```
