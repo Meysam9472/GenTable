@@ -9,7 +9,7 @@ class Teacher(Base):
     __tablename__ = "teachers" # name of the table in the real database
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     first_name = Column(String, nullable=False)
     last_name = Column(String, nullable=False)
     available_times = Column(JSON, nullable=True)
@@ -23,7 +23,7 @@ class Course(Base):
     __tablename__ = "courses"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     name = Column(String, nullable=False)
     cohort = Column(String, nullable=False)
     credits = Column(Integer, nullable=False)
@@ -39,9 +39,9 @@ class UserTeacherCourseRelation(Base):
     )
     
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    teacher_id = Column(Integer, ForeignKey("teachers.id"), nullable=False)
-    course_id = Column(Integer, ForeignKey("courses.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    teacher_id = Column(Integer, ForeignKey("teachers.id", ondelete="CASCADE"), nullable=False)
+    course_id = Column(Integer, ForeignKey("courses.id", ondelete="CASCADE"), nullable=False)
     
     user = relationship("User", back_populates="user_teacher_course_relation")
     teacher = relationship("Teacher", back_populates="user_teacher_course_relation")

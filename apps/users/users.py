@@ -20,8 +20,21 @@ from models.users_models import UserRole
 from dependencies import require_admin_role, get_current_user_token_data
 from fastapi.security import OAuth2PasswordRequestForm
 
+import logging
+from fastapi.concurrency import run_in_threadpool
+from sqlalchemy import delete
+from dependencies import get_mongo_connection
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/users", tags=["Users"])
+
+
+def _delete_user_mongo_data(user_id: int) -> None:
+    with get_mongo_connection() as client:
+        db = client["university_scheduler"]
+        db["schedules"].delete_many({"user_id": user_id})
+        db["task_of_user"].delete_many({"user_id": user_id})
 
 
 @router.post('/sing-up', response_model=UserResponse, status_code=status.HTTP_201_CREATED)
@@ -181,22 +194,29 @@ async def read_user(user_id: int, db: AsyncSession = Depends(get_db),
 async def delete_user(user_id: int, db: AsyncSession = Depends(get_db),
                       current_admin: dict = Depends(require_admin_role)):
     """
-    Delete a user by ID.
+    Delete a user by ID. The user's teachers, courses and relations are deleted too.
     """
     try:
-        result = await db.execute(select(User).where(User.id == user_id))
-        user = result.scalars().first()
-        if not user:
+        # The database deletes the user's data itself (ON DELETE CASCADE).
+        result = await db.execute(delete(User).where(User.id == user_id))
+        if result.rowcount == 0:
             raise HTTPException(status_code=404, detail="User not found")
-        
-        await db.delete(user)
         await db.commit()
-        return None
-    except Exception as e:
+    except HTTPException:
+        raise
+    except Exception:
+        await db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An unexpected error occurred while deleting user."
         )
+
+    # The user is already deleted. If Mongo cleanup fails, log it but do not fail the request.
+    try:
+        await run_in_threadpool(_delete_user_mongo_data, user_id)
+    except Exception:
+        logger.exception("Could not delete Mongo data of user %s", user_id)
+    return None
 
 
 @router.post("/login")
