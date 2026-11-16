@@ -1,5 +1,6 @@
 import enum
 from sqlalchemy import Column, Integer, String, Enum, ForeignKey, UniqueConstraint
+from sqlalchemy import Boolean, DateTime, false, func
 from sqlalchemy.dialects.postgresql import JSON
 from sqlalchemy.orm import relationship
 from database import Base
@@ -46,3 +47,17 @@ class UserTeacherCourseRelation(Base):
     user = relationship("User", back_populates="user_teacher_course_relation")
     teacher = relationship("Teacher", back_populates="user_teacher_course_relation")
     course = relationship("Course", back_populates="user_teacher_course_relation")
+
+
+class TaskCharge(Base):
+    """One row per started task. Records the charge and prevents double refunds."""
+    __tablename__ = "task_charges"
+
+    task_id = Column(String, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"),
+                     nullable=False, index=True)
+    # default=False for defining default value at python level, server_default=false() for 
+    # defining default value at database level like running sql cmd directly
+    refunded = Column(Boolean, nullable=False, default=False, server_default=false())
+    # func is used to call SQL functions(like COUNT(), MIN(), NOW(), ...) from Python using SQLAlchemy.
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)

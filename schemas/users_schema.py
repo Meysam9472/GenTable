@@ -13,6 +13,7 @@ class UserResponse(BaseModel):
     id: int
     username: str
     role: UserRole
+    credit: int
 
     # This allows Pydantic to read data from SQLAlchemy models
     model_config = ConfigDict(from_attributes=True)

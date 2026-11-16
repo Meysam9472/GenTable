@@ -22,7 +22,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 
 import logging
 from fastapi.concurrency import run_in_threadpool
-from sqlalchemy import delete
+from sqlalchemy import delete, update
 from dependencies import get_mongo_connection
 
 logger = logging.getLogger(__name__)
@@ -294,39 +294,36 @@ async def refresh_access_token(request_data: RefreshTokenRequest):
 
 @router.post("/change-user-credit", status_code=status.HTTP_200_OK)
 async def change_user_credit(req: AddCreditRequest, db: AsyncSession = Depends(get_db),
-                    current_admin: dict = Depends(require_admin_role)):
+                             current_admin: dict = Depends(require_admin_role)):
     """
-    Add credit for a user. Amount value can be negative for decreasing user's credite.
+    Add credit for a user. Amount can be negative to decrease the credit.
     """
     try:
-        user_data = await db.get(User, req.user_id)
-        
-        if not user_data:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"User with id {req.user_id} not found"
-            ) 
+        result = await db.execute(
+            update(User)
+            .where(User.id == req.user_id, User.credit + req.amount >= 0)
+            .values(credit=User.credit + req.amount)
+            .returning(User.credit)
+        )
+        row = result.first()
 
-        new_amount = user_data.credit + req.amount
-        if new_amount < 0:
+        if row is None:
+            # Either the user does not exist, or the new credit would be below 0.
+            exists = await db.execute(select(User.id).where(User.id == req.user_id))
+            if exists.first() is None:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                                    detail=f"User with id {req.user_id} not found")
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Credit amount must be at least 0. The new amount will make credit lower than 0.")
+                detail="Credit amount must be at least 0. The new amount will make credit lower than 0."
+            )
 
-        user_data.credit = new_amount
-        
         await db.commit()
-        await db.refresh(user_data)
-        
-        return {
-            "status": "success",
-            "user_id": user_data.id,
-            "new_credit": user_data.credit
-        }
-    
+        return {"status": "success", "user_id": req.user_id, "new_credit": row.credit}
+
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception:
         await db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

@@ -28,7 +28,7 @@ celery_app.conf.update(
     enable_utc=True,
     task_soft_time_limit=180, # After 180s if the task had not finished and exception would happen.
     task_time_limit=200, 
-    task_ack_late=True,
+    # task_acks_late=True, # No need to re-run a crashed task again.
     worker_concurrency=2, # Each worker can run x tasks together.
     worker_prefetch_multiplier=2 # Length of worker's queue.
 )

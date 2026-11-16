@@ -4,8 +4,7 @@ from datetime import datetime
 import sys
 import os
 from database import SyncSessionLocal
-from models.users_models import User
-from sqlalchemy import update
+from apps.time_table_maker.services.credit_service import refund_credit_once
 
 
 def time_table_maker(teachers:dict={}, courses:dict={}, number_of_rooms:int=3,
@@ -16,7 +15,6 @@ def time_table_maker(teachers:dict={}, courses:dict={}, number_of_rooms:int=3,
                      schedule_name=None) -> dict:
     try:
         logger.info("Task started...")
-        _credit_reduction(user_id)
         
         number_of_rooms = number_of_rooms
         cohorts = cohorts
@@ -63,9 +61,8 @@ def time_table_maker(teachers:dict={}, courses:dict={}, number_of_rooms:int=3,
                     for tr_avail_time in teachers[tr_id]["teacher_available_times"]:
                         valid_vars.append(X[(c_id, s, tr_avail_time, tr_id)])
                 if len(valid_vars) == 0:
-                    print(f"Timetable is not able to be created because for {c_data['name']}\
-                            course we don't have any teacher.")
-                    return
+                    raise ValueError(f"Timetable cannot be created: course '{c_data['name']}' has no teacher "
+                                     f"with available times.")
                 
                 model.AddExactlyOne(valid_vars) # Only one value should be 1 and other values should be 0s.
         
@@ -198,6 +195,7 @@ def time_table_maker(teachers:dict={}, courses:dict={}, number_of_rooms:int=3,
                         "Line Number": int(line_no), "Message": str(exc_obj)}
         
         _save_results(error_result, task_id, 'Error', user_id, logger, schedule_name)
+        raise
 
 
 def _save_results(cohort_schedules, task_id, status, user_id, logger, schedule_name):
@@ -205,9 +203,9 @@ def _save_results(cohort_schedules, task_id, status, user_id, logger, schedule_n
     DB_NAME = "university_scheduler"
     COLLECTION_NAME = "schedules"      
     
-    # Increase user's credit after unsuccessfull making a time table.
+    # Give the credit back if we did not produce a timetable (only once per task).
     if status != "Success":
-        _credit_add(user_id)
+        refund_credit_once(task_id)
     
     with get_mongo_connection() as client:
         # If database and collection do not exist, they will be created on first insert.
@@ -226,26 +224,3 @@ def _save_results(cohort_schedules, task_id, status, user_id, logger, schedule_n
         # Insert the result into the collection
         collection.insert_one(document)
         print('* Document saved.')
-
-
-def _credit_reduction(user_id):
-    with SyncSessionLocal() as session:
-        # Use an atomic update at the database level
-        stmt = (
-            update(User)
-            .where(User.id == user_id)
-            .values(credit=User.credit - 1)
-        )
-        session.execute(stmt)
-        session.commit()
-
-
-def _credit_add(user_id):
-    with SyncSessionLocal() as session:
-        stmt = (
-            update(User)
-            .where(User.id == user_id)
-            .values(credit=User.credit + 1)
-        )
-        session.execute(stmt)
-        session.commit()

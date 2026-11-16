@@ -8,10 +8,10 @@ from throttling import limiter
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from models.users_models import User
-from models.time_table_models import Teacher, Course, UserTeacherCourseRelation
+from models.time_table_models import Teacher, Course, UserTeacherCourseRelation, TaskCharge
 from dependencies import get_postgres_db_connection as get_db
 from sqlalchemy.future import select
-from sqlalchemy import delete, and_
+from sqlalchemy import delete, and_, update
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 from dependencies import get_current_user_token_data
@@ -22,6 +22,9 @@ from schemas.time_table_schema import CourseUpdateSchema, TeacherUpdateSchema, R
 
 from models.users_models import User, UserRole
 from fastapi.concurrency import run_in_threadpool
+
+from .services.credit_service import refund_credit_once
+import uuid
 
 
 router = APIRouter(prefix="/schedule", tags=["Schedule"])
@@ -81,25 +84,41 @@ def _get_tasks_of_user(user_id: int):
 @router.post("/start", status_code=status.HTTP_200_OK)
 @limiter.limit("1/minute")
 async def start_scheduling(request: Request, req: ScheduleRequest,
-                           current_user: dict=Depends(get_current_user_token_data),
+                           current_user: dict = Depends(get_current_user_token_data),
                            db: AsyncSession = Depends(get_db)):
-    
-    current_user_id = current_user.get("user_id")
-    
-    if not _is_admin(current_user):
-        result = await db.execute(select(User.credit).where(User.id==current_user_id))
-        user_credit = result.scalars().first()
-        if user_credit is None or user_credit <= 0:
-            raise HTTPException(status_code=400, detail="User's credit is not enough...")
-    
-    task = time_table_maker_task.delay(req.teachers, req.courses, req.num_rooms,
-                                       req.cohorts, req.days, req.hours, current_user_id, req.schedule_name)
-    
-    # pymongo is blocking, so run it in a thread to keep the event loop free.
-    await run_in_threadpool(_save_task_of_user, task.id, current_user_id)
-    
-    return {"task_id": task.id, "message": "Task started in background."}
 
+    user_id = current_user.get("user_id")
+    task_id = str(uuid.uuid4())
+
+    # 1. Take one credit and record the charge in ONE transaction.
+    #    "credit > 0" is checked inside the UPDATE, so two requests cannot use the same credit.
+    charged = await db.execute(
+        update(User)
+        .where(User.id == user_id, User.credit > 0)
+        .values(credit=User.credit - 1)
+        .returning(User.id)
+    )
+    if charged.first() is None:
+        raise HTTPException(status_code=400, detail="User's credit is not enough...")
+    db.add(TaskCharge(task_id=task_id, user_id=user_id))
+    await db.commit()
+
+    # 2. Save the owner and queue the task. If this fails, give the credit back.
+    try:
+        await run_in_threadpool(_save_task_of_user, task_id, user_id)
+        time_table_maker_task.apply_async(
+            args=[req.teachers, req.courses, req.num_rooms, req.cohorts, req.days,
+                  req.hours, user_id, req.schedule_name],
+            task_id=task_id,
+        )
+    except Exception:
+        await run_in_threadpool(refund_credit_once, task_id)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Could not start the task. Your credit was not used."
+        )
+
+    return {"task_id": task_id, "message": "Task started in background."}
 
 @router.get("/status/{task_id}", status_code=status.HTTP_200_OK)
 def get_schedule_status(task_id: str, current_user: dict=Depends(get_current_user_token_data)):

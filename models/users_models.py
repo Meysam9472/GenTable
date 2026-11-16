@@ -1,5 +1,5 @@
 import enum
-from sqlalchemy import Column, Integer, String, Enum, ForeignKey
+from sqlalchemy import Column, Integer, String, Enum, ForeignKey, CheckConstraint
 from sqlalchemy.orm import relationship
 from database import Base
 from .time_table_models import Teacher, Course
@@ -12,13 +12,17 @@ class UserRole(enum.Enum):
 
 class User(Base):
     __tablename__ = 'users'
+    # CheckConstraint enforces data validation at the database level.
+    __table_args__ = (
+        CheckConstraint("credit >= 0", name="ck_users_credit_non_negative"),
+    )
     
     id = Column(Integer, primary_key=True, index=True)
     username = Column(String, nullable=False, unique=True, index=True)
     hashed_password = Column(String, nullable=False)
     role = Column(Enum(UserRole), default=UserRole.USER, nullable=False)
     
-    credit = Column(Integer, default=0)
+    credit = Column(Integer, default=0, nullable=False, server_default="0")
     phone_number = Column(String, nullable=False, unique=True)
     
     teachers = relationship("Teacher", back_populates="user")
