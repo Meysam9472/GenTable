@@ -49,7 +49,7 @@ async def create_user(user_in: UserCreate, db: AsyncSession = Depends(get_db)):
         if existing_user:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Username already registered"
+                detail="Username already in use."
             )
 
         # Hash the password and save the user
@@ -65,11 +65,11 @@ async def create_user(user_in: UserCreate, db: AsyncSession = Depends(get_db)):
         await db.refresh(new_user)
         return new_user
     
-    except Exception as e:
+    except Exception:
         await db.rollback()
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"An unexpected error occurred while singing up. {e}"
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Username or phone number is already in use."
         )
 
 
