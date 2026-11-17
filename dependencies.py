@@ -83,3 +83,12 @@ def require_admin_role(current_user: dict = Depends(get_current_user_token_data)
             detail="You do not have permission to perform this action. Admins only."
         )
     return current_user
+
+
+def require_super_admin(current_user: dict = Depends(get_current_user_token_data)) -> dict:
+    if current_user.get("role") != UserRole.SUPER_ADMIN.name:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Super admins only."
+        )
+    return current_user

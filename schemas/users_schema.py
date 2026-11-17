@@ -32,3 +32,7 @@ class RefreshTokenRequest(BaseModel):
 class AddCreditRequest(BaseModel):
     user_id: int
     amount: int
+
+
+class PromoteUserRequest(BaseModel):
+    user_id: int

@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Body
 from dependencies import get_postgres_db_connection as get_db
 
 from schemas.users_schema import UserCreate, UserResponse, RefreshTokenRequest
-from schemas.users_schema import AddCreditRequest, UserResetPassword
+from schemas.users_schema import AddCreditRequest, UserResetPassword, PromoteUserRequest
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
@@ -17,7 +17,7 @@ from .security import verify_password, create_refresh_token, get_password_hash
 
 from models.users_models import UserRole
 
-from dependencies import require_admin_role, get_current_user_token_data
+from dependencies import require_admin_role, get_current_user_token_data, require_super_admin
 from fastapi.security import OAuth2PasswordRequestForm
 
 from fastapi.concurrency import run_in_threadpool
@@ -394,3 +394,39 @@ async def get_user_credit(user_id: int, db: AsyncSession = Depends(get_db),
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An unexpected error occurred while getting the user."
         )
+
+
+@router.post("/promote-to-admin", status_code=status.HTTP_200_OK)
+async def promote_to_admin(req: PromoteUserRequest,
+                           db: AsyncSession = Depends(get_db),
+                           current_super_admin: dict = Depends(require_super_admin)):
+    """
+    Change the role of a normal user to admin. Only a super admin can do this.
+    """
+    try:
+        user_data = await db.get(User, req.user_id)
+        if not user_data:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                                detail="User not found.")
+
+        if user_data.role != UserRole.USER:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"Only normal users can be promoted. This user is already {user_data.role.value}."
+            )
+
+        user_data.role = UserRole.ADMIN
+        await db.commit()
+
+        return {"status": "success", "user_id": user_data.id, "new_role": user_data.role.value}
+
+    except HTTPException:
+        raise
+    except Exception:
+        await db.rollback()
+        logger.exception("Unexpected error while promoting user %s", req.user_id)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An unexpected error occurred while changing the user's role."
+        )
+

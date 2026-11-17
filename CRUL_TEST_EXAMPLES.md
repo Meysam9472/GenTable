@@ -225,7 +225,16 @@ curl -X 'POST' "http://localhost:8001/users/reset-user-password" \
 }'
 
 ```
+### 9. Promote a normal user to admin
 
+Only a super admin can use this endpoint. A normal user or a normal admin gets 403.
+
+```bash
+curl -X POST "http://localhost:8001/users/promote-to-admin" \
+     -H "Content-Type: application/json" \
+     -H "Authorization: Bearer <SUPER_ADMIN_TOKEN>" \
+     -d '{"user_id": 5}'
+```
 
 ## API Tests for Data Management
 
