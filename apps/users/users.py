@@ -73,11 +73,9 @@ async def create_user(user_in: UserCreate, db: AsyncSession = Depends(get_db)):
 
 
 @router.post('/reset-user-password', status_code=status.HTTP_200_OK)
-async def reset_user_password(
-    req: UserResetPassword,
-    current_user: dict = Depends(get_current_user_token_data),
-    db: AsyncSession = Depends(get_db)
-):
+async def reset_user_password(req: UserResetPassword,
+                              current_user: dict = Depends(get_current_user_token_data),
+                              db: AsyncSession = Depends(get_db)):
     try:
         # 1. Fetch user
         user_data = await db.get(User, req.user_id)
@@ -99,7 +97,26 @@ async def reset_user_password(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="You don't have permission to change this password."
             )
-
+        
+        user_role_req = user_data.role
+        # An Admin can't change the password of a SuperAdmin
+        if user_role_req == UserRole.SUPER_ADMIN and current_user_role == UserRole.ADMIN.name:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You don't have permission to change this password."
+            )
+        # A SuperAdmin can't change the password of another SuperAdmin.
+        if user_role_req == UserRole.SUPER_ADMIN and not is_owner:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You don't have permission to change this password."
+            )
+        # An Admin can't change the password of another Admin.
+        if user_role_req == UserRole.ADMIN and not is_owner:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You don't have permission to change this password."
+            )
         # 3. Password Verification Logic
         if is_admin:
             # Admin can reset any password without verification
@@ -197,10 +214,31 @@ async def delete_user(user_id: int, db: AsyncSession = Depends(get_db),
     Delete a user by ID. The user's teachers, courses and relations are deleted too.
     """
     try:
+        if user_id == current_admin["user_id"]:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                                detail="You cannot delete your own account.")
+
+        user_data = await db.get(User, user_id)
+        if not user_data:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found."
+            )
+        user_role_req = user_data.role
+        # An Admin can't delete a SuperAdmin.
+        if user_role_req == UserRole.SUPER_ADMIN and current_admin["role"] == UserRole.ADMIN.name:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Permission denied."
+            )
+        # An Admin can't delete another Admin.
+        if user_role_req == UserRole.ADMIN and current_admin["role"] == UserRole.ADMIN.name:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Permission denied."
+            )
         # The database deletes the user's data itself (ON DELETE CASCADE).
-        result = await db.execute(delete(User).where(User.id == user_id))
-        if result.rowcount == 0:
-            raise HTTPException(status_code=404, detail="User not found")
+        await db.execute(delete(User).where(User.id == user_id))
         await db.commit()
     except HTTPException:
         raise
