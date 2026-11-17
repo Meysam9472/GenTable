@@ -14,8 +14,7 @@ from sqlalchemy.future import select
 from sqlalchemy import delete, and_, update
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
-from dependencies import get_current_user_token_data
-from dependencies import get_mongo_connection
+from dependencies import get_current_user_token_data, get_mongo_connection
 
 from schemas.time_table_schema import ScheduleRequest, TeacherRequest, CourseRequest
 from schemas.time_table_schema import CourseUpdateSchema, TeacherUpdateSchema, RelationSchema
@@ -25,7 +24,6 @@ from fastapi.concurrency import run_in_threadpool
 
 from .services.credit_service import refund_credit_once
 import uuid
-
 
 router = APIRouter(prefix="/schedule", tags=["Schedule"])
 
@@ -111,7 +109,9 @@ async def start_scheduling(request: Request, req: ScheduleRequest,
                   req.hours, user_id, req.schedule_name],
             task_id=task_id,
         )
-    except Exception:
+    except HTTPException:
+        raise
+    except Exception as e:
         await run_in_threadpool(refund_credit_once, task_id)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -125,31 +125,39 @@ def get_schedule_status(task_id: str, current_user: dict=Depends(get_current_use
     """
     Get condition of the a task, admins can see all task conditions.
     """
-    user_id = current_user.get("user_id")
-     # Normal users can only check their own tasks. Admins can check any task.
-    if not _is_admin(current_user):
-        with get_mongo_connection() as client:
-            owner = client[DB_NAME][TASKS_OF_USERS_COLLECTION_NAME].find_one(
-                {"task_id": task_id, "user_id": user_id},
-                {"_id": 1},
-            )
-        if owner is None:
-            raise HTTPException(status_code=404, detail="Task not found.")
-    
-    task_result = AsyncResult(task_id, app=celery_app)
-    
-    user_tasks = _get_tasks_of_user(user_id)
-    
-    if task_result.state == 'PENDING':
-        return {"status": "Task is pending in a queue"}
-    elif task_result.state == 'STARTED' or task_result.state == 'PROGRESS':
-        return {"status": "Task started..."}
-    elif task_result.state == 'SUCCESS':
-        return {"status": "Task finished successfully", "result": task_result.result}
-    elif task_result.state == 'FAILURE':
-        return {"status": "Task faild!", "error": str(task_result.info)}
-    else:
-        return {"status": task_result.state}
+    try:
+        user_id = current_user.get("user_id")
+        # Normal users can only check their own tasks. Admins can check any task.
+        if not _is_admin(current_user):
+            with get_mongo_connection() as client:
+                owner = client[DB_NAME][TASKS_OF_USERS_COLLECTION_NAME].find_one(
+                    {"task_id": task_id, "user_id": user_id},
+                    {"_id": 1},
+                )
+            if owner is None:
+                raise HTTPException(status_code=404, detail="Task not found.")
+        
+        task_result = AsyncResult(task_id, app=celery_app)
+        
+        user_tasks = _get_tasks_of_user(user_id)
+        
+        if task_result.state == 'PENDING':
+            return {"status": "Task is pending in a queue"}
+        elif task_result.state == 'STARTED' or task_result.state == 'PROGRESS':
+            return {"status": "Task started..."}
+        elif task_result.state == 'SUCCESS':
+            return {"status": "Task finished successfully", "result": task_result.result}
+        elif task_result.state == 'FAILURE':
+            return {"status": "Task faild!", "error": str(task_result.info)}
+        else:
+            return {"status": task_result.state}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An unexpected error occurred while getting the schedule status."
+        )
 
 
 @router.post("/add-teacher", status_code=status.HTTP_200_OK)
@@ -542,8 +550,9 @@ async def get_all_user_schedules_list(user_id: int,
                 {"_id": 0, "schedule_name": 1, "task_id": 1, "created_at": 1, "status": 1, "result": 1}
             ))
         return {"user_schedules": user_schedules}
-
-    except Exception:
+    except HTTPException:
+        raise
+    except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An unexpected error occurred while fetching user schedule list."
@@ -590,7 +599,7 @@ async def delete_user_schedule(task_id: str,
 
     except HTTPException:
         raise
-    except Exception:
+    except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An unexpected error occurred while deleting the user schedule."

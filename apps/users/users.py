@@ -20,12 +20,11 @@ from models.users_models import UserRole
 from dependencies import require_admin_role, get_current_user_token_data
 from fastapi.security import OAuth2PasswordRequestForm
 
-import logging
 from fastapi.concurrency import run_in_threadpool
 from sqlalchemy import delete, update
 from dependencies import get_mongo_connection
 
-logger = logging.getLogger(__name__)
+
 
 router = APIRouter(prefix="/users", tags=["Users"])
 
@@ -182,7 +181,8 @@ async def read_user(user_id: int, db: AsyncSession = Depends(get_db),
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
         return user
-    
+    except HTTPException:
+        raise 
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -323,7 +323,7 @@ async def change_user_credit(req: AddCreditRequest, db: AsyncSession = Depends(g
 
     except HTTPException:
         raise
-    except Exception:
+    except Exception as e:
         await db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
