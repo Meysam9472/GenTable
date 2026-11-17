@@ -231,6 +231,11 @@ async def delete_user(user_id: int, db: AsyncSession = Depends(get_db),
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Permission denied."
             )
+        if user_role_req == UserRole.SUPER_ADMIN and current_admin["role"] == UserRole.SUPER_ADMIN.name:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Permission denied."
+            )
         # An Admin can't delete another Admin.
         if user_role_req == UserRole.ADMIN and current_admin["role"] == UserRole.ADMIN.name:
             raise HTTPException(
